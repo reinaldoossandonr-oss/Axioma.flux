@@ -1,6 +1,6 @@
-// 1. Inicialización: USA SIEMPRE LA LLAVE 'anon public' (la que empieza con sb_publishable...)
+// 1. Inicialización
 const SUPABASE_URL = 'https://legtxgdwqjfzvlvheaao.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlZ3R4Z2R3cWpmenZsdmhlYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjM5MDAsImV4cCI6MjA5NzYzOTkwMH0.EXACa14BiJshtfU8i-1SmpjTtOYjlCjyNUiazd8RX20'; // CAMBIA ESTO POR LA LLAVE PÚBLICA
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlZ3R4Z2R3cWpmenZsdmhlYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjM5MDAsImV4cCI6MjA5NzYzOTkwMH0.EXACa14BiJshtfU8i-1SmpjTtOYjlCjyNUiazd8RX20'; 
 
 const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -64,7 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 type: 'bar', 
                 data: { 
                     labels: data.map(d => d.fecha), 
-                    datasets: [{ label: 'Asistencia', data: data.map(v => v.total), backgroundColor: '#1aabf0' }] 
+                    datasets: [{ 
+                        label: 'Producción', 
+                        data: data.map(v => v.cantidad_producida), 
+                        backgroundColor: '#1aabf0' 
+                    }] 
                 }
             });
         }
