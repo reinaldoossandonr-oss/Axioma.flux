@@ -1,7 +1,7 @@
-// Configuración de Supabase (Vercel inyectará estas variables)
-const supabase = supabase.createClient(
-    process.env.SUPABASE_URL, 
-    process.env.SUPABASE_KEY
+// Inicialización correcta usando el SDK cargado vía CDN
+const clienteSupabase = supabase.createClient(
+    'https://legtxgdwqjfzvlvheaao.supabase.co', 
+    'sb_publishable_OpquiXUBHpb7_a9MvT92Qw_jC8V1...' // Asegúrate de que esta sea tu llave pública completa
 );
 
 function mostrarMensaje(t, e) {
@@ -20,9 +20,18 @@ function mostrarSeccion(id, el) {
     if(id === 'dotacion') cargarDotacion();
 }
 
+function filtrarTabla() {
+    const input = document.getElementById("buscador").value.toLowerCase();
+    const filas = document.querySelectorAll("#tablaDotacion tbody tr");
+    filas.forEach(fila => {
+        const nombre = fila.cells[0].textContent.toLowerCase();
+        fila.style.display = nombre.includes(input) ? "" : "none";
+    });
+}
+
 async function cargarDotacion() {
-    // Reemplazo de fetch local por consulta Supabase
-    const { data, error } = await supabase.from('empleados').select('*');
+    // Uso del cliente renombrado
+    const { data, error } = await clienteSupabase.from('empleados').select('*');
     if (error) return console.error("Error cargando dotación:", error);
     
     document.getElementById('cuerpoTabla').innerHTML = data.map(e => `
@@ -38,7 +47,7 @@ document.getElementById('formNuevoUsuario').onsubmit = async (e) => {
     const data = Object.fromEntries(new FormData(e.target));
     
     // Inserción en Supabase
-    const { error } = await supabase.from('empleados').insert([data]);
+    const { error } = await clienteSupabase.from('empleados').insert([data]);
     
     if (!error) {
         mostrarMensaje("Empleado registrado con éxito", true);
@@ -50,8 +59,9 @@ document.getElementById('formNuevoUsuario').onsubmit = async (e) => {
     }
 };
 
-// Carga inicial del gráfico (Ajusta 'produccion' al nombre de tu tabla)
-supabase.from('produccion').select('*').then(({ data }) => {
+// Carga inicial del gráfico
+clienteSupabase.from('produccion').select('*').then(({ data }) => {
+    if (!data) return;
     const ctx = document.getElementById('graficoRendimiento').getContext('2d');
     new Chart(ctx, { 
         type: 'bar', 
