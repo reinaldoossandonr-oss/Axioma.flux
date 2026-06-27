@@ -1,6 +1,6 @@
 // 1. Inicialización: USA SIEMPRE LA LLAVE 'anon public' (la que empieza con sb_publishable...)
 const SUPABASE_URL = 'https://legtxgdwqjfzvlvheaao.supabase.co';
-const SUPABASE_KEY = 'sb_secret_9wonPVz4wB5JUcSMFt6KXw_iwwPt3Kt'; // CAMBIA ESTO POR LA LLAVE PÚBLICA
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlZ3R4Z2R3cWpmenZsdmhlYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjM5MDAsImV4cCI6MjA5NzYzOTkwMH0.EXACa14BiJshtfU8i-1SmpjTtOYjlCjyNUiazd8RX20'; // CAMBIA ESTO POR LA LLAVE PÚBLICA
 
 const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
