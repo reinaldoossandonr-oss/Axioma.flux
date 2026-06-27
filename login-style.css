@@ -1,9 +1,72 @@
-.login-page, .login-page body { margin: 0; padding: 0; height: 100%; }
+/* --- login-style.css COMPLETO --- */
+
+/* Reset básico */
+* { box-sizing: border-box; }
+.login-page, body { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; }
+
+/* Contenedor principal */
 .login-container { display: flex; height: 100vh; width: 100%; }
-.login-left { flex: 1; background-size: cover; background-position: center; position: relative; display: flex; align-items: center; justify-content: center; }
-.login-left::before { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.4); }
+
+/* Lado izquierdo (Imagen) */
+.login-left { 
+    flex: 1; 
+    background-size: cover; 
+    background-position: center; 
+    position: relative; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+/* Oscurecedor de imagen para mejor contraste */
+.login-left::before { 
+    content: ''; 
+    position: absolute; 
+    top:0; left:0; right:0; bottom:0; 
+    background: rgba(0,0,0,0.4); 
+}
+
 .overlay { color: white; z-index: 1; text-align: center; padding: 20px; }
-.login-right { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #fff; padding: 40px; }
+
+/* Lado derecho (Formulario) */
+.login-right { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+    background: #fff; 
+    padding: 40px; 
+}
+
+/* Formulario */
 #loginForm { width: 100%; max-width: 350px; }
-#loginForm input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-#loginForm button { width: 100%; padding: 12px; background-color: #1aabf0; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+#loginForm input { 
+    width: 100%; 
+    padding: 15px; 
+    margin-bottom: 20px; 
+    border: 1px solid #ddd; 
+    border-radius: 8px; 
+    font-size: 16px;
+}
+
+#loginForm button { 
+    width: 100%; 
+    padding: 15px; 
+    background-color: #1aabf0; 
+    color: white; 
+    border: none; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 16px;
+    transition: background 0.3s;
+}
+
+#loginForm button:hover { background-color: #0f8ccf; }
+
+/* Responsivo: Si la pantalla es muy pequeña (móvil), ocultar imagen y mostrar solo formulario */
+@media (max-width: 768px) {
+    .login-left { display: none; }
+    .login-right { width: 100%; }
+}
