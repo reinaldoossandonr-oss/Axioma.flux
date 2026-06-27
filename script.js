@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 2. Función global para que el HTML la encuentre siempre
+// 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('.main-content > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
     const seccion = document.getElementById('seccion-' + id);
@@ -53,20 +53,30 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // Carga inicial del gráfico desde 'asistencia'
-    clienteSupabase.from('asistencia').select('*').then(({ data, error }) => {
-        if (error) console.error("Error gráfico:", error);
-        if (!data) return;
+    // Carga, agrupación y gráfico de 'asistencia'
+    clienteSupabase.from('asistencia').select('fecha, cantidad_producida').then(({ data, error }) => {
+        if (error) { console.error("Error gráfico:", error); return; }
+        if (!data || data.length === 0) return;
+
+        // Sumar producción por día
+        const mapaProduccion = data.reduce((acc, curr) => {
+            const fecha = curr.fecha;
+            acc[fecha] = (acc[fecha] || 0) + (curr.cantidad_producida || 0);
+            return acc;
+        }, {});
+
+        const fechas = Object.keys(mapaProduccion).sort();
+        const totales = fechas.map(f => mapaProduccion[f]);
         
         const ctx = document.getElementById('graficoRendimiento');
         if (ctx) {
             new Chart(ctx.getContext('2d'), { 
                 type: 'bar', 
                 data: { 
-                    labels: data.map(d => d.fecha), 
+                    labels: fechas, 
                     datasets: [{ 
-                        label: 'Producción', 
-                        data: data.map(v => v.cantidad_producida), 
+                        label: 'Total Producción Diaria', 
+                        data: totales, 
                         backgroundColor: '#1aabf0' 
                     }] 
                 }
