@@ -79,6 +79,7 @@ table td {
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    display: inline-block;
 }
 
 .badge-reponer { background-color: #fee2e2; color: #b91c1c; } /* Rojo suave */

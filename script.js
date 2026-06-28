@@ -2,7 +2,7 @@
 const API_URL = 'https://axioma-flux.onrender.com';
 let miGrafico;
 
-// 2. Función global de navegación
+// 2. Función global de navegación (SIN CAMBIOS)
 window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('main > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
     const seccion = document.getElementById('seccion-' + id);
@@ -14,7 +14,7 @@ window.mostrarSeccion = (id, el) => {
     if(id === 'inventario') cargarInventario();
 };
 
-// 3. Función del buscador para Inventario
+// 3. Función del buscador para Inventario (SIN CAMBIOS)
 window.filtrarInventario = () => {
     const input = document.getElementById('buscadorInventario');
     const filtro = input.value.toLowerCase();
@@ -28,28 +28,27 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos (Tabla actualizada con lógica de reposición)
+// 4. Carga de datos de productos (MODIFICADO SOLO PARA EL ESTILO MODERNO)
 async function cargarInventario() {
     try {
-        // Llamada al nuevo endpoint de reporte que consulta la vista SQL en Supabase
         const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`);
         const result = await response.json();
         
         const tabla = document.getElementById('cuerpoTablaInventario');
         if (tabla && result.data) {
             tabla.innerHTML = result.data.map(p => {
-                // Definimos clase CSS según el estado para resaltar en el dashboard
-                const filaClase = p['Estado Stock'] === 'REPONER' ? 'row-alert' : 'row-optimal';
+                // Seleccionamos la clase del badge según el estado
+                const estadoClass = p['Estado Stock'] === 'REPONER' ? 'badge-reponer' : 'badge-optimo';
                 
                 return `
-                    <tr class="${filaClase}">
-                        <td style="padding: 12px;">${p['Nombre'] || 'N/A'}</td>
-                        <td style="padding: 12px;">${p['SKU'] || 'N/A'}</td>
-                        <td style="padding: 12px; font-weight: bold;">${p['Stock Actual'] || 0}</td>
-                        <td style="padding: 12px;">${p['Consumo Promedio Diario'] || 0}</td>
-                        <td style="padding: 12px;">${p['Dias Inventario'] || 0}</td>
-                        <td style="padding: 12px; font-weight: bold;">${p['Estado Stock']}</td>
-                        <td style="padding: 12px; color: red; font-weight: bold;">${p['Cantidad a Reponer'] || 0}</td>
+                    <tr>
+                        <td>${p['Nombre'] || 'N/A'}</td>
+                        <td>${p['SKU'] || 'N/A'}</td>
+                        <td style="font-weight: bold;">${p['Stock Actual'] || 0}</td>
+                        <td>${p['Consumo Promedio Diario'] || 0}</td>
+                        <td>${p['Dias Inventario'] || 0}</td>
+                        <td><span class="badge ${estadoClass}">${p['Estado Stock']}</span></td>
+                        <td style="font-weight: bold;">${p['Cantidad a Reponer'] || 0}</td>
                     </tr>
                 `;
             }).join('');
@@ -59,7 +58,7 @@ async function cargarInventario() {
     }
 }
 
-// 5. Carga de datos para gráfico
+// 5. Carga de datos para gráfico (SIN CAMBIOS)
 async function cargarDatosGrafico() {
     const ctx = document.getElementById('graficoStock');
     if (!ctx) return;
@@ -88,7 +87,7 @@ async function cargarDatosGrafico() {
     }
 }
 
-// 6. Cierre de sesión
+// 6. Cierre de sesión (SIN CAMBIOS)
 window.cerrarSesion = async () => {
     try {
         if(typeof clienteSupabase !== 'undefined') {
@@ -100,7 +99,7 @@ window.cerrarSesion = async () => {
     }
 };
 
-// 7. Registro de movimientos
+// 7. Registro de movimientos (SIN CAMBIOS)
 window.registrarMovimiento = async (event, tipo) => {
     event.preventDefault();
     const form = event.target;
