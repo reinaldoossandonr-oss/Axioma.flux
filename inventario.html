@@ -32,9 +32,10 @@
             <div class="form-card">
                 <h4>Recepción de Mercancía</h4>
                 <form id="formRecepcion" onsubmit="registrarMovimiento(event, 'INGRESO')">
-                    <div class="form-group"><label>Producto ID</label><input type="text" required></div>
-                    <div class="form-group"><label>Ubicación</label><input type="text" required></div>
-                    <div class="form-group"><label>Cantidad</label><input type="number" step="0.01" required></div>
+                    <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
+                    <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
+                    <div class="form-group"><label>Ubicación</label><input type="text" name="ubicacion_id" required></div>
+                    <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" step="0.01" required></div>
                     <button type="submit" class="btn-action">Confirmar Ingreso</button>
                 </form>
             </div>
@@ -42,9 +43,10 @@
             <div class="form-card">
                 <h4>Orden de Picking/Despacho</h4>
                 <form id="formPicking" onsubmit="registrarMovimiento(event, 'SALIDA')">
-                    <div class="form-group"><label>Pedido ID</label><input type="text" required></div>
-                    <div class="form-group"><label>Producto ID</label><input type="text" required></div>
-                    <div class="form-group"><label>Cantidad</label><input type="number" step="0.01" required></div>
+                    <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
+                    <div class="form-group"><label>Pedido ID</label><input type="text" name="pedido_id" required></div>
+                    <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
+                    <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" step="0.01" required></div>
                     <button type="submit" class="btn-action" style="background: #059669;">Procesar Salida</button>
                 </form>
             </div>
@@ -52,15 +54,16 @@
             <div class="form-card">
                 <h4>Ajuste de Inventario</h4>
                 <form id="formAjuste" onsubmit="registrarMovimiento(event, 'AJUSTE')">
-                    <div class="form-group"><label>Producto ID</label><input type="text" required></div>
+                    <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
+                    <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
                     <div class="form-group"><label>Motivo</label>
-                        <select>
+                        <select name="motivo">
                             <option>Merma</option>
                             <option>Auditoría Física</option>
                             <option>Error de Sistema</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Cantidad (±)</label><input type="number" step="0.01" required></div>
+                    <div class="form-group"><label>Cantidad (±)</label><input type="number" name="cantidad" step="0.01" required></div>
                     <button type="submit" class="btn-action" style="background: #f59e0b;">Aplicar Ajuste</button>
                 </form>
             </div>
