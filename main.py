@@ -35,17 +35,18 @@ class Producto(BaseModel):
 def ruta_raiz():
     return {"status": "online", "message": "Backend Axioma Logística listo"}
 
-# 1. Obtener inventario para gráficos
+# 1. Obtener inventario para gráficos y tabla (ACTUALIZADO)
 @app.get("/api/v1/logistica/stock")
 def obtener_stock():
     try:
-        response = supabase.table("productos").select("nombre, stock_actual").execute()
+        # Se agregaron 'sku' y 'categoria' al select
+        response = supabase.table("productos").select("sku, nombre, categoria, stock_actual").execute()
         return {"success": True, "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # 2. Registrar movimiento (Entrada/Salida)
-@app.post("/api/v1/logistica/movimiento")
+@app.post("/api/v1/logistica/movimientos") # Ajustado a plural para coincidir con tu fetch en JS
 def registrar_movimiento(empresa_id: str, producto_id: str, tipo: str, cantidad: float):
     try:
         data = supabase.table("movimientos").insert({
