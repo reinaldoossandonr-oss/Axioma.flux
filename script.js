@@ -1,7 +1,6 @@
 // 1. Inicialización
 const API_URL = 'https://axioma-flux.onrender.com';
 
-// Variable global para controlar la instancia del gráfico
 let miGrafico;
 
 // 2. Función global de navegación
@@ -30,29 +29,38 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos (Tabla)
+// 4. Carga de datos de productos (Tabla actualizada con lógica de reposición)
 async function cargarInventario() {
     try {
-        const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
+        // Llamada al nuevo endpoint que consulta la vista SQL
+        const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`);
         const result = await response.json();
         
         const tabla = document.getElementById('cuerpoTablaInventario');
         if (tabla && result.data) {
-            // Renderizado ajustado a la nueva vista (sin categoría)
-            tabla.innerHTML = result.data.map(p => `
-                <tr>
-                    <td style="padding: 15px;">${p.sku || 'N/A'}</td>
-                    <td style="padding: 15px;">${p.nombre || 'Sin nombre'}</td>
-                    <td style="padding: 15px; font-weight: bold;">${p.stock_actual || 0}</td>
-                </tr>
-            `).join('');
+            tabla.innerHTML = result.data.map(p => {
+                // Definimos clase CSS según el estado para resaltar en el dashboard
+                const filaClase = p['Estado Stock'] === 'REPONER' ? 'row-alert' : 'row-optimal';
+                
+                return `
+                    <tr class="${filaClase}">
+                        <td style="padding: 12px;">${p['Nombre'] || 'N/A'}</td>
+                        <td style="padding: 12px;">${p['SKU'] || 'N/A'}</td>
+                        <td style="padding: 12px; font-weight: bold;">${p['Stock Actual'] || 0}</td>
+                        <td style="padding: 12px;">${p['Consumo Promedio Diario'] || 0}</td>
+                        <td style="padding: 12px;">${p['Dias Inventario'] || 0}</td>
+                        <td style="padding: 12px; font-weight: bold;">${p['Estado Stock']}</td>
+                        <td style="padding: 12px; color: red; font-weight: bold;">${p['Cantidad a Reponer'] || 0}</td>
+                    </tr>
+                `;
+            }).join('');
         }
     } catch (err) {
-        console.error("Error cargando tabla:", err);
+        console.error("Error cargando inventario:", err);
     }
 }
 
-// 5. Carga de datos para gráfico
+// 5. Carga de datos para gráfico (Se mantiene igual)
 async function cargarDatosGrafico() {
     const ctx = document.getElementById('graficoStock');
     if (!ctx) return;
@@ -102,7 +110,6 @@ window.registrarMovimiento = async (event, tipo) => {
     const datos = {};
     formData.forEach((value, key) => { datos[key] = value; });
     
-    // Si es SALIDA, enviamos cantidad negativa para que la vista sume correctamente
     if (tipo === 'SALIDA') {
         datos.cantidad = parseFloat(datos.cantidad) * -1;
     }

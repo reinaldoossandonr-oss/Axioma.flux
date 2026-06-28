@@ -35,17 +35,26 @@ class Movimiento(BaseModel):
 def ruta_raiz():
     return {"status": "online", "message": "Backend Axioma Logística listo"}
 
-# 1. Obtener inventario (Ahora consulta la VISTA en lugar de la tabla productos)
+# 1. Obtener inventario simple (mantenemos tu endpoint original)
 @app.get("/api/v1/logistica/stock")
 def obtener_stock():
     try:
-        # Consultamos la vista creada en Supabase
         response = supabase.table("vista_stock_detallado").select("sku, nombre, stock_actual").execute()
         return {"success": True, "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 2. Registrar movimiento
+# 2. Obtener reporte completo para Dashboard (Nuevo)
+@app.get("/api/v1/logistica/reporte-inventario")
+def obtener_reporte_inventario():
+    try:
+        # Consulta la vista que configuramos en el SQL de Supabase
+        response = supabase.table("vista_reporte_inventario").select("*").execute()
+        return {"success": True, "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 3. Registrar movimiento
 @app.post("/api/v1/logistica/movimientos")
 def registrar_movimiento(movimiento: Movimiento):
     try:
@@ -54,7 +63,7 @@ def registrar_movimiento(movimiento: Movimiento):
         # Generar ID único localmente
         data_to_insert["id"] = str(uuid.uuid4())
         
-        # Insertar directamente en la tabla de movimientos (que ya definimos como TEXT)
+        # Insertar en movimientos
         supabase.table("movimientos").insert(data_to_insert).execute()
         return {"success": True, "message": "Movimiento registrado correctamente"}
     except Exception as e:

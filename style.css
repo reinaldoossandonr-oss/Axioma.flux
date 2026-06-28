@@ -66,6 +66,15 @@ table td {
     color: #475569; 
 }
 
+/* Clases de Estado para Inventario */
+.row-alert {
+    background-color: #fee2e2 !important; /* Rojo muy suave para alertas de reposición */
+}
+
+.row-optimal {
+    background-color: #f0fdf4 !important; /* Verde muy suave para stock óptimo */
+}
+
 /* Inputs y Botones */
 input { 
     padding: 10px; 
