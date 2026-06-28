@@ -6,13 +6,18 @@ let miGrafico;
 
 // 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
-    document.querySelectorAll('.main-content > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
+    // Ocultar todas las secciones
+    document.querySelectorAll('main > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
+    
+    // Mostrar la seleccionada
     const seccion = document.getElementById('seccion-' + id);
     if(seccion) seccion.classList.remove('hidden');
     
+    // Actualizar clases de navegación
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if(el) el.classList.add('active');
     
+    // Si vamos a inventario, recargar datos
     if(id === 'inventario') cargarInventario();
 };
 
@@ -29,7 +34,7 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos
+// 4. Carga de datos de productos (Tabla)
 async function cargarInventario() {
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
@@ -47,12 +52,15 @@ async function cargarInventario() {
             `).join('');
         }
     } catch (err) {
-        console.error("Error conectando con API Render:", err);
+        console.error("Error conectando con API Render para tabla:", err);
     }
 }
 
 // 5. Carga de datos para gráfico
-async function cargarDatosGrafico(ctx) {
+async function cargarDatosGrafico() {
+    const ctx = document.getElementById('graficoStock');
+    if (!ctx) return;
+
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
         const result = await response.json();
@@ -77,19 +85,22 @@ async function cargarDatosGrafico(ctx) {
     }
 }
 
-// 6. Función para cerrar sesión (Añadida para el botón del HTML)
+// 6. Cierre de sesión
 window.cerrarSesion = async () => {
     try {
-        const { error } = await clienteSupabase.auth.signOut();
-        if (error) throw error;
+        // Asegúrate de que clienteSupabase esté definido en tu proyecto
+        if(typeof clienteSupabase !== 'undefined') {
+            await clienteSupabase.auth.signOut();
+        }
         window.location.href = 'login.html';
     } catch (err) {
-        console.error("Error al cerrar sesión:", err);
         window.location.href = 'login.html';
     }
 };
 
+// --- INICIALIZACIÓN AUTOMÁTICA ---
 document.addEventListener("DOMContentLoaded", () => {
-    const ctx = document.getElementById('graficoStock');
-    if (ctx) cargarDatosGrafico(ctx);
+    // Cargamos ambas cosas al entrar al index.html
+    cargarInventario();
+    cargarDatosGrafico();
 });
