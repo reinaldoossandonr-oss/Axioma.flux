@@ -30,22 +30,34 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos (Tabla)
+// 4. Carga de datos de productos (Tabla) - CORREGIDA
 async function cargarInventario() {
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
         const result = await response.json();
         
+        // --- AQUÍ ESTÁ EL TRUCO ---
+        // Vamos a imprimir el primer elemento para ver los nombres reales de los campos
+        if (result.data && result.data.length > 0) {
+            console.log("Estructura de un objeto de producto:", result.data[0]);
+        }
+
         const tabla = document.getElementById('cuerpoTablaInventario');
         if (tabla && result.data) {
-            tabla.innerHTML = result.data.map(p => `
+            tabla.innerHTML = result.data.map(p => {
+                // Si 'p.sku' es undefined, buscaremos el nombre correcto.
+                // Revisa en la consola del navegador (F12) qué sale en el console.log de arriba
+                // y ajusta 'p.sku' por el nombre correcto que aparezca.
+                const skuMostrado = p.sku || "N/A"; 
+                
+                return `
                 <tr>
-                    <td style="padding: 15px;">${p.sku}</td>
-                    <td style="padding: 15px;">${p.nombre}</td>
-                    <td style="padding: 15px;">${p.categoria}</td>
-                    <td style="padding: 15px; font-weight: bold;">${p.stock_actual}</td>
-                </tr>
-            `).join('');
+                    <td style="padding: 15px;">${skuMostrado}</td>
+                    <td style="padding: 15px;">${p.nombre || 'Sin nombre'}</td>
+                    <td style="padding: 15px;">${p.categoria || 'Sin categoría'}</td>
+                    <td style="padding: 15px; font-weight: bold;">${p.stock_actual || 0}</td>
+                </tr>`;
+            }).join('');
         }
     } catch (err) {
         console.error("Error cargando tabla:", err);
