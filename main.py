@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from pydantic import BaseModel
 import os
+import uuid # Necesario para generar el ID único localmente
 from dotenv import load_dotenv
 
 # Configuración
@@ -52,18 +53,17 @@ def obtener_stock():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 2. Registrar movimiento
+# 2. Registrar movimiento (LIMPIO: Sin búsquedas de UUID)
 @app.post("/api/v1/logistica/movimientos")
 def registrar_movimiento(movimiento: Movimiento):
     try:
         data_to_insert = movimiento.dict(exclude_none=True)
         
-        # Buscar el UUID real de la ubicación si se envió el código legible (ej: A-1-01)
-        if "ubicacion_id" in data_to_insert:
-            res = supabase.table("ubicaciones").select("id").eq("ubicacion_id", data_to_insert["ubicacion_id"]).single().execute()
-            if res.data:
-                data_to_insert["ubicacion_id"] = res.data["id"]
+        # Generamos un ID único manualmente porque en la tabla TEXT 
+        # Supabase ya no lo autogenera
+        data_to_insert["id"] = str(uuid.uuid4())
         
+        # Insertamos directo a la tabla TEXT
         supabase.table("movimientos").insert(data_to_insert).execute()
         return {"success": True, "message": "Movimiento registrado"}
     except Exception as e:
