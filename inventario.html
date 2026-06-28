@@ -34,7 +34,7 @@
                 <form id="formRecepcion" onsubmit="registrarMovimiento(event, 'INGRESO')">
                     <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
                     <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
-                    <div class="form-group"><label>Ubicación (Ej: A-1-01)</label><input type="text" name="ubicacion_id" required></div>
+                    <div class="form-group"><label>Ubicación</label><input type="text" name="ubicacion_id" required></div>
                     <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" step="0.01" required></div>
                     <button type="submit" class="btn-action">Confirmar Ingreso</button>
                 </form>
@@ -44,8 +44,8 @@
                 <h4>Orden de Picking/Despacho</h4>
                 <form id="formPicking" onsubmit="registrarMovimiento(event, 'SALIDA')">
                     <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
-                    <div class="form-group"><label>Pedido ID</label><input type="text" name="pedido_id" required></div>
                     <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
+                    <div class="form-group"><label>Ubicación</label><input type="text" name="ubicacion_id" required></div>
                     <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" step="0.01" required></div>
                     <button type="submit" class="btn-action" style="background: #059669;">Procesar Salida</button>
                 </form>
@@ -56,6 +56,7 @@
                 <form id="formAjuste" onsubmit="registrarMovimiento(event, 'AJUSTE')">
                     <input type="hidden" name="empresa_id" value="00000000-0000-0000-0000-000000000000">
                     <div class="form-group"><label>Producto ID</label><input type="text" name="producto_id" required></div>
+                    <div class="form-group"><label>Ubicación</label><input type="text" name="ubicacion_id" required></div>
                     <div class="form-group"><label>Motivo</label>
                         <select name="motivo">
                             <option value="Merma">Merma</option>

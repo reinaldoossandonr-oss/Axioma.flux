@@ -102,6 +102,12 @@ window.registrarMovimiento = async (event, tipo) => {
     // Convertimos FormData a objeto plano
     const datos = {};
     formData.forEach((value, key) => { datos[key] = value; });
+    
+    // LÓGICA: Si es SALIDA, enviamos la cantidad en negativo
+    if (tipo === 'SALIDA') {
+        datos.cantidad = parseFloat(datos.cantidad) * -1;
+    }
+    
     datos.tipo = tipo;
 
     try {
@@ -116,6 +122,7 @@ window.registrarMovimiento = async (event, tipo) => {
             form.reset();
             // Actualizamos la tabla si estamos en la vista de inventario
             if (typeof cargarInventario === 'function') cargarInventario();
+            if (typeof cargarDatosGrafico === 'function') cargarDatosGrafico();
         } else {
             const err = await response.json();
             alert('Error: ' + (err.detail || 'No se pudo registrar el movimiento.'));
