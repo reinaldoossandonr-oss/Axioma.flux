@@ -2,7 +2,7 @@
 const API_URL = 'https://axioma-flux.onrender.com';
 let miGrafico;
 
-// 2. Función global de navegación (SIN CAMBIOS)
+// 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('main > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
     const seccion = document.getElementById('seccion-' + id);
@@ -14,7 +14,7 @@ window.mostrarSeccion = (id, el) => {
     if(id === 'inventario') cargarInventario();
 };
 
-// 3. Función del buscador para Inventario (SIN CAMBIOS)
+// 3. Función del buscador para Inventario
 window.filtrarInventario = () => {
     const input = document.getElementById('buscadorInventario');
     const filtro = input.value.toLowerCase();
@@ -28,7 +28,7 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos (MODIFICADO SOLO PARA EL ESTILO MODERNO)
+// 4. Carga de datos de productos
 async function cargarInventario() {
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`);
@@ -42,13 +42,15 @@ async function cargarInventario() {
                 
                 return `
                     <tr>
-                        <td>${p['Nombre'] || 'N/A'}</td>
-                        <td>${p['SKU'] || 'N/A'}</td>
-                        <td style="font-weight: bold;">${p['Stock Actual'] || 0}</td>
-                        <td>${p['Consumo Promedio Diario'] || 0}</td>
-                        <td>${p['Dias Inventario'] || 0}</td>
-                        <td><span class="badge ${estadoClass}">${p['Estado Stock']}</span></td>
-                        <td style="font-weight: bold;">${p['Cantidad a Reponer'] || 0}</td>
+                        <td style="padding: 12px;">${p['Nombre'] || 'N/A'}</td>
+                        <td style="padding: 12px;">${p['SKU'] || 'N/A'}</td>
+                        <td style="padding: 12px; font-weight: bold;">${p['Stock Actual'] || 0}</td>
+                        <td style="padding: 12px;">${p['Consumo Promedio Diario'] || 0}</td>
+                        <td style="padding: 12px;">${p['Dias Inventario'] || 0}</td>
+                        <td style="padding: 12px;">
+                            <span class="badge ${estadoClass}">${p['Estado Stock']}</span>
+                        </td>
+                        <td style="padding: 12px; font-weight: bold; color: #ef4444;">${p['Cantidad a Reponer'] || 0}</td>
                     </tr>
                 `;
             }).join('');
@@ -58,7 +60,7 @@ async function cargarInventario() {
     }
 }
 
-// 5. Carga de datos para gráfico (SIN CAMBIOS)
+// 5. Carga de datos para gráfico
 async function cargarDatosGrafico() {
     const ctx = document.getElementById('graficoStock');
     if (!ctx) return;
@@ -87,7 +89,7 @@ async function cargarDatosGrafico() {
     }
 }
 
-// 6. Cierre de sesión (SIN CAMBIOS)
+// 6. Cierre de sesión
 window.cerrarSesion = async () => {
     try {
         if(typeof clienteSupabase !== 'undefined') {
@@ -99,7 +101,7 @@ window.cerrarSesion = async () => {
     }
 };
 
-// 7. Registro de movimientos (SIN CAMBIOS)
+// 7. Registro de movimientos
 window.registrarMovimiento = async (event, tipo) => {
     event.preventDefault();
     const form = event.target;
