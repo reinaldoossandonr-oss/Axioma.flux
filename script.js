@@ -1,8 +1,8 @@
 // 1. Inicialización
-const SUPABASE_URL = 'https://legtxgdwqjfzvlvheaao.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxlZ3R4Z2R3cWpmenZsdmhlYWFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjM5MDAsImV4cCI6MjA5NzYzOTkwMH0.EXACa14BiJshtfU8i-1SmpjTtOYjlCjyNUiazd8RX20'; // Asegúrate de tener la clave correcta
+const API_URL = 'https://axioma-flux.onrender.com';
 
-const clienteSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Variable global para controlar la instancia del gráfico
+let miGrafico;
 
 // 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
@@ -13,7 +13,6 @@ window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     if(el) el.classList.add('active');
     
-    // Si la sección es inventario, cargamos los datos
     if(id === 'inventario') cargarInventario();
 };
 
@@ -30,53 +29,55 @@ window.filtrarInventario = () => {
     }
 };
 
-// 4. Carga de datos de productos (Usando tu lógica de backend profesional)
+// 4. Carga de datos de productos
 async function cargarInventario() {
     try {
-        // AQUÍ ES DONDE LLAMARÁS A TU API DE RENDER
-        // const response = await fetch('https://tu-api-en-render.com/api/v1/logistica/stock');
-        // Por ahora, para probar, mantenemos la llamada directa a Supabase:
-        const { data, error } = await clienteSupabase.from('productos').select('*');
-        
-        if (error) throw error;
+        const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
+        const result = await response.json();
         
         const tabla = document.getElementById('cuerpoTablaInventario');
-        if (tabla && data) {
-            tabla.innerHTML = data.map(p => `
+        if (tabla && result.data) {
+            tabla.innerHTML = result.data.map(p => `
                 <tr>
-                    <td>${p.sku}</td>
-                    <td>${p.nombre}</td>
-                    <td>${p.categoria}</td>
-                    <td>${p.stock_actual}</td>
+                    <td style="padding: 15px;">${p.sku}</td>
+                    <td style="padding: 15px;">${p.nombre}</td>
+                    <td style="padding: 15px;">${p.categoria}</td>
+                    <td style="padding: 15px; font-weight: bold;">${p.stock_actual}</td>
                 </tr>
             `).join('');
         }
     } catch (err) {
-        console.error("Error cargando inventario:", err);
+        console.error("Error conectando con API Render:", err);
+    }
+}
+
+// 5. Carga de datos para gráfico
+async function cargarDatosGrafico(ctx) {
+    try {
+        const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
+        const result = await response.json();
+        const data = result.data;
+
+        if (miGrafico) miGrafico.destroy();
+
+        miGrafico = new Chart(ctx.getContext('2d'), { 
+            type: 'bar', 
+            data: { 
+                labels: data.map(p => p.nombre), 
+                datasets: [{ 
+                    label: 'Stock Disponible', 
+                    data: data.map(p => p.stock_actual), 
+                    backgroundColor: '#1aabf0' 
+                }] 
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    } catch (err) {
+        console.error("Error cargando gráfico desde API:", err);
     }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Inicialización del Gráfico de Stock
     const ctx = document.getElementById('graficoStock');
-    if (ctx) {
-        cargarDatosGrafico(ctx);
-    }
+    if (ctx) cargarDatosGrafico(ctx);
 });
-
-async function cargarDatosGrafico(ctx) {
-    const { data, error } = await clienteSupabase.from('productos').select('nombre, stock_actual');
-    if (error) return;
-
-    new Chart(ctx.getContext('2d'), { 
-        type: 'bar', 
-        data: { 
-            labels: data.map(p => p.nombre), 
-            datasets: [{ 
-                label: 'Stock Disponible', 
-                data: data.map(p => p.stock_actual), 
-                backgroundColor: '#1aabf0' 
-            }] 
-        }
-    });
-}
