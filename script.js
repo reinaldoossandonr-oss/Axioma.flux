@@ -35,6 +35,12 @@ window.filtrarInventario = () => {
     }
 };
 
+// Función para cerrar sesión (Recuperada)
+window.cerrarSesion = () => {
+    localStorage.removeItem('supabase_token');
+    window.location.href = 'login.html';
+};
+
 function actualizarKPIs(datos) {
     const optimos = datos.filter(p => p.estado_stock === 'Óptimo').length;
     const reponer = datos.filter(p => p.estado_stock === 'REPONER').length;
@@ -153,6 +159,11 @@ window.registrarMovimiento = async (event, tipo) => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Verificación de seguridad básica: si no hay token, fuera al login
+    if (!localStorage.getItem('supabase_token')) {
+        window.location.href = 'login.html';
+        return;
+    }
     cargarInventario();
     cargarDatosGrafico();
     cargarGraficoVentas();
