@@ -1,7 +1,7 @@
 // 1. Inicialización
 const API_URL = 'https://axioma-flux.onrender.com';
 let miGrafico;
-let graficoVentas; // Referencia para el nuevo gráfico
+let graficoVentas;
 
 // 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
@@ -15,7 +15,7 @@ window.mostrarSeccion = (id, el) => {
     if(id === 'inventario') cargarInventario();
 };
 
-// 3. Función del buscador para Inventario
+// 3. Función del buscador
 window.filtrarInventario = () => {
     const input = document.getElementById('buscadorInventario');
     const filtro = input.value.toLowerCase();
@@ -31,15 +31,15 @@ window.filtrarInventario = () => {
 
 // Función para actualizar las tarjetas KPI
 function actualizarKPIs(datos) {
-    const optimos = datos.filter(p => p['Estado Stock'] === 'Óptimo').length;
-    const reponer = datos.filter(p => p['Estado Stock'] === 'REPONER').length;
+    const optimos = datos.filter(p => p.estado_stock === 'Óptimo').length;
+    const reponer = datos.filter(p => p.estado_stock === 'REPONER').length;
     
     document.getElementById('kpi-optimo').innerText = optimos;
     document.getElementById('kpi-reponer').innerText = reponer;
     document.getElementById('kpi-total').innerText = datos.length;
 }
 
-// 4. Carga de datos de productos
+// 4. Carga de datos de productos (Ajustado a nombres de vista SQL)
 async function cargarInventario() {
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`);
@@ -47,22 +47,22 @@ async function cargarInventario() {
         
         const tabla = document.getElementById('cuerpoTablaInventario');
         if (tabla && result.data) {
-            // Actualizamos KPIs y tabla
             actualizarKPIs(result.data);
             
             tabla.innerHTML = result.data.map(p => {
-                const estadoClass = p['Estado Stock'] === 'REPONER' ? 'badge-reponer' : 'badge-optimo';
+                // Usamos las propiedades exactas de la vista SQL: nombre, sku, stock_actual, etc.
+                const estadoClass = p.estado_stock === 'REPONER' ? 'badge-reponer' : 'badge-optimo';
                 return `
                     <tr>
-                        <td style="padding: 12px;">${p['Nombre'] || 'N/A'}</td>
-                        <td style="padding: 12px;">${p['SKU'] || 'N/A'}</td>
-                        <td style="padding: 12px; font-weight: bold;">${p['Stock Actual'] || 0}</td>
-                        <td style="padding: 12px;">${p['Consumo Promedio Diario'] || 0}</td>
-                        <td style="padding: 12px;">${p['Dias Inventario'] || 0}</td>
+                        <td style="padding: 12px;">${p.nombre || 'N/A'}</td>
+                        <td style="padding: 12px;">${p.sku || 'N/A'}</td>
+                        <td style="padding: 12px; font-weight: bold;">${p.stock_actual || 0}</td>
+                        <td style="padding: 12px;">${p.consumo_promedio_diario || 0}</td>
+                        <td style="padding: 12px;">${p.dias_inventario || 0}</td>
                         <td style="padding: 12px;">
-                            <span class="badge ${estadoClass}">${p['Estado Stock']}</span>
+                            <span class="badge ${estadoClass}">${p.estado_stock || 'N/A'}</span>
                         </td>
-                        <td style="padding: 12px; font-weight: bold; color: #ef4444;">${p['Cantidad a Reponer'] || 0}</td>
+                        <td style="padding: 12px; font-weight: bold; color: #ef4444;">${p.cantidad_a_reponer || 0}</td>
                     </tr>
                 `;
             }).join('');
@@ -94,7 +94,6 @@ async function cargarDatosGrafico() {
     } catch (err) { console.error("Error gráfico stock:", err); }
 }
 
-// Nueva función para gráfico de línea de ventas
 async function cargarGraficoVentas() {
     const ctx = document.getElementById('graficoVentas');
     if (!ctx) return;
@@ -125,45 +124,43 @@ async function cargarGraficoVentas() {
     } catch (err) { console.error("Error gráfico ventas:", err); }
 }
 
-// 6. Cierre de sesión
 window.cerrarSesion = async () => {
-    try {
-        if(typeof clienteSupabase !== 'undefined') await clienteSupabase.auth.signOut();
-        window.location.href = 'login.html';
-    } catch (err) { window.location.href = 'login.html'; }
+    // Implementar lógica de signOut de Supabase aquí
+    window.location.href = 'login.html';
 };
 
 // 7. Registro de movimientos
 window.registrarMovimiento = async (event, tipo) => {
     event.preventDefault();
     const form = event.target;
-    const formData = new FormData(form);
-    const datos = {};
-    formData.forEach((value, key) => { datos[key] = value; });
-    if (tipo === 'SALIDA') datos.cantidad = parseFloat(datos.cantidad) * -1;
-    datos.tipo = tipo;
+    const datos = {
+        producto_id: form.producto_id.value,
+        cantidad: parseFloat(form.cantidad.value),
+        tipo: tipo
+    };
+    if (tipo === 'SALIDA') datos.cantidad *= -1;
 
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/movimientos`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('supabase_token')}` // Asumiendo que guardas el token aquí
+            },
             body: JSON.stringify(datos)
         });
 
         if (response.ok) {
             alert(`${tipo} registrado con éxito.`);
             form.reset();
-            setTimeout(async () => {
-                await cargarInventario();
-                await cargarDatosGrafico();
-                await cargarGraficoVentas();
-            }, 500);
+            cargarInventario();
+            cargarDatosGrafico();
+            cargarGraficoVentas();
         } else {
             const err = await response.json();
             alert('Error: ' + (err.detail || 'No se pudo registrar el movimiento.'));
         }
     } catch (err) {
-        console.error("Error en registro:", err);
         alert("Error de conexión con el servidor.");
     }
 };
