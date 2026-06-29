@@ -18,8 +18,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexión Supabase (Usamos la clave ANON_KEY desde el .env)
-# La clave es global ahora, pero cada endpoint la usará con el token del usuario
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
@@ -29,6 +27,17 @@ class Movimiento(BaseModel):
     tipo: str
     cantidad: float
     ubicacion_id: str = None 
+
+# --- FUNCION AUXILIAR DE SEGURIDAD ---
+def get_secure_client(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token no proporcionado o inválido")
+    
+    token = auth_header.split(" ")[1]
+    supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    supabase.postgrest.auth(token)
+    return supabase
 
 # --- ENDPOINTS ---
 
@@ -40,29 +49,17 @@ def ruta_raiz():
 @app.get("/api/v1/logistica/stock")
 def obtener_stock(request: Request):
     try:
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            raise HTTPException(status_code=401, detail="No autorizado")
-        token = auth_header.split(" ")[1]
-        
-        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        supabase.postgrest.auth(token)
+        supabase = get_secure_client(request)
         response = supabase.table("vista_stock_detallado").select("producto_id, sku, nombre, stock_actual").execute()
         return {"success": True, "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 2. Obtener reporte completo para Dashboard
+# 2. Obtener reporte completo
 @app.get("/api/v1/logistica/reporte-inventario")
 def obtener_reporte_inventario(request: Request):
     try:
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            raise HTTPException(status_code=401, detail="No autorizado")
-        token = auth_header.split(" ")[1]
-        
-        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        supabase.postgrest.auth(token)
+        supabase = get_secure_client(request)
         response = supabase.table("vista_reporte_inventario").select("*").execute()
         return {"success": True, "data": response.data}
     except Exception as e:
@@ -72,40 +69,22 @@ def obtener_reporte_inventario(request: Request):
 @app.get("/api/v1/logistica/ventas-diarias")
 def obtener_ventas_diarias(request: Request):
     try:
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            raise HTTPException(status_code=401, detail="No autorizado")
-        token = auth_header.split(" ")[1]
-        
-        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        supabase.postgrest.auth(token)
+        supabase = get_secure_client(request)
         response = supabase.table("vista_ventas_diarias").select("*").execute()
-        
         labels = [str(row['fecha']) for row in response.data]
         data = [float(row['total_ventas']) for row in response.data]
-        
         return {"labels": labels, "data": data}
     except Exception as e:
-        print(f"Error en ventas-diarias: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
 # 4. Registrar movimiento
 @app.post("/api/v1/logistica/movimientos")
 def registrar_movimiento(movimiento: Movimiento, request: Request):
     try:
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            raise HTTPException(status_code=401, detail="No autorizado")
-        
-        token = auth_header.split(" ")[1]
-        
+        supabase = get_secure_client(request)
         data_to_insert = movimiento.dict(exclude_none=True)
         data_to_insert["id"] = str(uuid.uuid4())
-        
-        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-        supabase.postgrest.auth(token)
         supabase.table("movimientos").insert(data_to_insert).execute()
-        
         return {"success": True, "message": "Movimiento registrado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
