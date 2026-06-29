@@ -57,21 +57,25 @@ def obtener_reporte_inventario():
 @app.get("/api/v1/logistica/ventas-diarias")
 def obtener_ventas_diarias(request: Request):
     try:
-        # Extraemos el token del usuario para respetar RLS
+        # 1. Obtenemos el header
         auth_header = request.headers.get("Authorization")
-        token = auth_header.split(" ")[1] if auth_header else None
         
+        # 2. Si no hay token, el usuario no está logueado
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Token faltante")
+            
+        token = auth_header.split(" ")[1]
+        
+        # 3. Autenticamos el cliente de Supabase
         supabase.postgrest.auth(token)
         
-        # Consultamos la nueva vista
+        # 4. Consultamos
         response = supabase.table("vista_ventas_diarias").select("*").execute()
         
-        # Transformamos para el gráfico
-        labels = [str(row['fecha']) for row in response.data]
-        data = [float(row['total_ventas']) for row in response.data]
-        
-        return {"labels": labels, "data": data}
+        # 5. Retornamos
+        return {"data": response.data}
     except Exception as e:
+        print(f"Error en ventas-diarias: {str(e)}") # ESTO TE DIRÁ EL ERROR REAL
         raise HTTPException(status_code=500, detail=str(e))
 
 # 4. Registrar movimiento

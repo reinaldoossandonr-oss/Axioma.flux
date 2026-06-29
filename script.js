@@ -3,6 +3,12 @@ const API_URL = 'https://axioma-flux.onrender.com';
 let miGrafico;
 let graficoVentas;
 
+// Helper para obtener el token de autenticación
+const getHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('supabase_token') || ''}`
+});
+
 // 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('main > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
@@ -29,7 +35,6 @@ window.filtrarInventario = () => {
     }
 };
 
-// Función para actualizar las tarjetas KPI
 function actualizarKPIs(datos) {
     const optimos = datos.filter(p => p.estado_stock === 'Óptimo').length;
     const reponer = datos.filter(p => p.estado_stock === 'REPONER').length;
@@ -39,18 +44,16 @@ function actualizarKPIs(datos) {
     document.getElementById('kpi-total').innerText = datos.length;
 }
 
-// 4. Carga de datos de productos (Ajustado a nombres de vista SQL)
+// 4. Carga de Inventario
 async function cargarInventario() {
     try {
-        const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`);
+        const response = await fetch(`${API_URL}/api/v1/logistica/reporte-inventario`, { headers: getHeaders() });
         const result = await response.json();
         
         const tabla = document.getElementById('cuerpoTablaInventario');
         if (tabla && result.data) {
             actualizarKPIs(result.data);
-            
             tabla.innerHTML = result.data.map(p => {
-                // Usamos las propiedades exactas de la vista SQL: nombre, sku, stock_actual, etc.
                 const estadoClass = p.estado_stock === 'REPONER' ? 'badge-reponer' : 'badge-optimo';
                 return `
                     <tr>
@@ -67,18 +70,15 @@ async function cargarInventario() {
                 `;
             }).join('');
         }
-    } catch (err) {
-        console.error("Error cargando inventario:", err);
-    }
+    } catch (err) { console.error("Error inventario:", err); }
 }
 
-// 5. Carga de datos para gráficos
+// 5. Gráficos
 async function cargarDatosGrafico() {
     const ctx = document.getElementById('graficoStock');
     if (!ctx) return;
-
     try {
-        const response = await fetch(`${API_URL}/api/v1/logistica/stock`);
+        const response = await fetch(`${API_URL}/api/v1/logistica/stock`, { headers: getHeaders() });
         const result = await response.json();
         const data = result.data;
 
@@ -98,7 +98,8 @@ async function cargarGraficoVentas() {
     const ctx = document.getElementById('graficoVentas');
     if (!ctx) return;
     try {
-        const response = await fetch(`${API_URL}/api/v1/logistica/ventas-diarias`);
+        const response = await fetch(`${API_URL}/api/v1/logistica/ventas-diarias`, { headers: getHeaders() });
+        if (!response.ok) throw new Error("Error en servidor");
         const result = await response.json(); 
         
         if (graficoVentas) graficoVentas.destroy();
@@ -115,21 +116,12 @@ async function cargarGraficoVentas() {
                     fill: true
                 }]
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false,
-                scales: { x: { ticks: { maxRotation: 45, minRotation: 45 } } }
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
     } catch (err) { console.error("Error gráfico ventas:", err); }
 }
 
-window.cerrarSesion = async () => {
-    // Implementar lógica de signOut de Supabase aquí
-    window.location.href = 'login.html';
-};
-
-// 7. Registro de movimientos
+// 6. Registro de movimientos
 window.registrarMovimiento = async (event, tipo) => {
     event.preventDefault();
     const form = event.target;
@@ -143,10 +135,7 @@ window.registrarMovimiento = async (event, tipo) => {
     try {
         const response = await fetch(`${API_URL}/api/v1/logistica/movimientos`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('supabase_token')}` // Asumiendo que guardas el token aquí
-            },
+            headers: getHeaders(),
             body: JSON.stringify(datos)
         });
 
@@ -158,11 +147,9 @@ window.registrarMovimiento = async (event, tipo) => {
             cargarGraficoVentas();
         } else {
             const err = await response.json();
-            alert('Error: ' + (err.detail || 'No se pudo registrar el movimiento.'));
+            alert('Error: ' + (err.detail || 'No se pudo registrar.'));
         }
-    } catch (err) {
-        alert("Error de conexión con el servidor.");
-    }
+    } catch (err) { alert("Error de conexión."); }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
