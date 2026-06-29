@@ -35,7 +35,7 @@ window.filtrarInventario = () => {
     }
 };
 
-// Función para cerrar sesión (Recuperada)
+// Función para cerrar sesión
 window.cerrarSesion = () => {
     localStorage.removeItem('supabase_token');
     window.location.href = 'login.html';
