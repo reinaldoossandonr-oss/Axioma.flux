@@ -9,6 +9,23 @@ const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('supabase_token') || ''}`
 });
 
+// Función para obtener y mostrar el email del usuario desde el token
+function mostrarUsuario() {
+    const token = localStorage.getItem('supabase_token');
+    if (!token) return;
+
+    try {
+        // Decodificamos la parte 'payload' del JWT
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const email = payload.email || 'Usuario';
+        
+        const el = document.getElementById('user-display');
+        if (el) el.innerText = email;
+    } catch (e) {
+        console.error("Error al decodificar el token:", e);
+    }
+}
+
 // 2. Función global de navegación
 window.mostrarSeccion = (id, el) => {
     document.querySelectorAll('main > div[id^="seccion-"]').forEach(s => s.classList.add('hidden'));
@@ -160,6 +177,9 @@ window.registrarMovimiento = async (event, tipo) => {
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("Iniciando carga de dashboard...");
+    
+    // Mostramos el usuario al cargar
+    mostrarUsuario();
     
     // Verificación sin redirección automática
     if (!localStorage.getItem('supabase_token')) {
