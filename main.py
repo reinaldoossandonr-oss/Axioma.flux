@@ -55,12 +55,20 @@ def obtener_reporte_inventario():
 
 # 3. Ventas diarias
 @app.get("/api/v1/logistica/ventas-diarias")
-def obtener_ventas_diarias():
+def obtener_ventas_diarias(request: Request):
     try:
-        response = supabase.table("vista_ventas_mensuales").select("*").execute()
+        # Extraemos el token del usuario para respetar RLS
+        auth_header = request.headers.get("Authorization")
+        token = auth_header.split(" ")[1] if auth_header else None
         
+        supabase.postgrest.auth(token)
+        
+        # Consultamos la nueva vista
+        response = supabase.table("vista_ventas_diarias").select("*").execute()
+        
+        # Transformamos para el gráfico
         labels = [str(row['fecha']) for row in response.data]
-        data = [float(row['total']) for row in response.data]
+        data = [float(row['total_ventas']) for row in response.data]
         
         return {"labels": labels, "data": data}
     except Exception as e:
