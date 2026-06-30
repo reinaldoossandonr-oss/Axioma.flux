@@ -49,15 +49,27 @@ class ProductoOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class ProductoConStock(ProductoOut):
-    """Producto con stock calculado (desde v_tabla_principal)."""
+class ProductoConStock(BaseModel):
+    """
+    Producto con stock calculado desde v_tabla_principal.
+    NO hereda de ProductoOut porque la vista tiene columnas distintas
+    (producto_id en lugar de id, sin descripcion/created_at/updated_at, etc.)
+    """
+    empresa_id: UUID
+    producto_id: UUID
+    sku: str
+    nombre: str
     categoria: Optional[str] = None
+    unidad_medida: str
+    costo_promedio: float = 0.0
+    precio_venta: Optional[float] = None
+    stock_minimo: float = 0.0
     stock_actual: float = 0.0
     consumo_promedio_diario: float = 0.0
+    valor_inventario: float = 0.0
     dias_inventario: Optional[float] = None
     estado: Optional[str] = None
     cantidad_reponer: float = 0.0
-    valor_inventario: float = 0.0
 
 
 # ── LOTES ────────────────────────────────────────────────────
