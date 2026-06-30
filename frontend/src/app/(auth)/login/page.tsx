@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import AxiomaIcon from '@/components/ui/AxiomaIcon'
 
 const IMAGE_URL =
   'https://axiomaanalytics.com/wp-content/uploads/2026/06/%C2%BFQue-es-la-analitica-y-por-que-es-clave-en-las-empresas.png'
@@ -67,10 +68,7 @@ export default function LoginPage() {
               className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
               style={{ background: 'linear-gradient(135deg, #1AABF0, #0891B2)' }}
             >
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
+              <AxiomaIcon className="w-5 h-5" />
             </div>
             <div>
               <p className="text-white font-bold text-sm leading-none tracking-wide">Axioma Flux</p>
