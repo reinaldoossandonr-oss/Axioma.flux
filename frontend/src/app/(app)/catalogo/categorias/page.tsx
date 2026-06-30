@@ -43,13 +43,13 @@ export default function CategoriasPage() {
   }
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-xl font-bold text-slate-800">Categorías</h1>
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <h1 className="text-lg md:text-xl font-bold text-slate-800">Categorías</h1>
 
       {/* Formulario */}
       <div className="card">
         <h2 className="font-semibold text-slate-700 mb-4">Nueva categoría</h2>
-        <form onSubmit={handleCrear} className="flex gap-3">
+        <form onSubmit={handleCrear} className="flex flex-col sm:flex-row gap-3">
           <input className="input flex-1" placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} required />
           <input className="input flex-1" placeholder="Descripción (opcional)" value={descripcion} onChange={e => setDescripcion(e.target.value)} />
           <button type="submit" disabled={guardando} className="btn-primary px-5">

@@ -30,7 +30,12 @@ const navItems = [
   },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  open?: boolean
+  onClose?: () => void
+}
+
+export default function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [perfil, setPerfil] = useState<{ nombre: string; email: string } | null>(null)
@@ -49,20 +54,24 @@ export default function Sidebar() {
     cargarPerfil()
   }, [])
 
+  // Cerrar drawer al cambiar de ruta en mobile
+  useEffect(() => {
+    onClose?.()
+  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
   }
 
-  // Iniciales para el avatar (máx 2 letras)
   const iniciales = perfil?.nombre
-    ? perfil.nombre.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    ? perfil.nombre.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
     : '?'
 
-  return (
-    <aside className="w-64 min-h-screen bg-sidebar flex flex-col fixed left-0 top-0 z-30">
+  const sidebarContent = (
+    <aside className="w-64 h-full bg-sidebar flex flex-col">
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-slate-800">
+      <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -75,6 +84,16 @@ export default function Sidebar() {
             <p className="text-slate-500 text-xs mt-0.5">Inventario</p>
           </div>
         </div>
+        {/* Botón cerrar — solo visible en mobile */}
+        <button
+          onClick={onClose}
+          className="lg:hidden text-slate-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-800"
+          aria-label="Cerrar menú"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -91,7 +110,7 @@ export default function Sidebar() {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                         active
                           ? 'bg-primary text-white font-medium'
                           : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -111,12 +130,9 @@ export default function Sidebar() {
       {/* Perfil de usuario */}
       <div className="px-3 py-3 border-t border-slate-800">
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-slate-800/60 transition-colors group">
-          {/* Avatar con iniciales */}
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 text-white text-xs font-bold shadow-sm">
             {iniciales}
           </div>
-
-          {/* Nombre y email */}
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-semibold leading-tight truncate">
               {perfil?.nombre ?? '—'}
@@ -125,8 +141,6 @@ export default function Sidebar() {
               {perfil?.email ?? ''}
             </p>
           </div>
-
-          {/* Botón logout */}
           <button
             onClick={handleLogout}
             title="Cerrar sesión"
@@ -137,6 +151,33 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      {/* ── Desktop: sidebar fijo ── */}
+      <div className="hidden lg:block fixed left-0 top-0 bottom-0 w-64 z-30">
+        {sidebarContent}
+      </div>
+
+      {/* ── Mobile: drawer deslizable ── */}
+      {/* Overlay */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Panel drawer */}
+      <div
+        className={`lg:hidden fixed left-0 top-0 bottom-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {sidebarContent}
+      </div>
+    </>
   )
 }
 

@@ -82,18 +82,19 @@ export default function UbicacionesPage() {
   const TIPOS = ['almacen', 'bodega', 'planta', 'tienda', 'externo']
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Ubicaciones</h1>
-          <p className="text-slate-400 text-sm">Bodegas, almacenes y sus posiciones (Zona-Rack-Nivel)</p>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">Ubicaciones</h1>
+          <p className="text-slate-400 text-sm hidden sm:block">Bodegas, almacenes y sus posiciones (Zona-Rack-Nivel)</p>
         </div>
         <button
           onClick={() => setMostrarFormUbic(v => !v)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap"
         >
           <span className="text-lg font-light leading-none">+</span>
-          Nueva ubicación
+          <span className="hidden sm:inline">Nueva ubicación</span>
+          <span className="sm:hidden">Nueva</span>
         </button>
       </div>
 

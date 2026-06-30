@@ -38,56 +38,61 @@ export default function ProductosPage() {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Productos</h1>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">Productos</h1>
           <p className="text-slate-400 text-sm">{productos.length} productos encontrados</p>
         </div>
-        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2">
+        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
           <span className="text-lg font-light leading-none">+</span>
-          Nueva orden
+          <span className="hidden sm:inline">Nueva orden</span>
+          <span className="sm:hidden">Orden</span>
         </Link>
       </div>
 
       {/* Filtros */}
       <div className="card">
-        <form onSubmit={handleBuscar} className="flex flex-wrap gap-3">
+        <form onSubmit={handleBuscar} className="flex flex-col sm:flex-row flex-wrap gap-3">
           <input
-            className="input flex-1 min-w-40"
+            className="input flex-1 min-w-0"
             placeholder="Buscar por SKU o nombre..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
           />
-          <select
-            className="input w-44"
-            value={categoriaFiltro}
-            onChange={e => setCategoriaFiltro(e.target.value)}
-          >
-            <option value="">Todas las categorías</option>
-            {categorias.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
-          <select
-            className="input w-40"
-            value={estadoFiltro}
-            onChange={e => setEstadoFiltro(e.target.value)}
-          >
-            <option value="">Todos los estados</option>
-            <option value="Óptimo">Óptimo</option>
-            <option value="Reponer">Reponer</option>
-            <option value="Sin consumo">Sin consumo</option>
-          </select>
-          <button type="submit" className="btn-primary px-5">Buscar</button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => { setBusqueda(''); setCategoriaFiltro(''); setEstadoFiltro(''); cargar() }}
-          >
-            Limpiar
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <select
+              className="input flex-1 sm:flex-none sm:w-44"
+              value={categoriaFiltro}
+              onChange={e => setCategoriaFiltro(e.target.value)}
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+            <select
+              className="input flex-1 sm:flex-none sm:w-40"
+              value={estadoFiltro}
+              onChange={e => setEstadoFiltro(e.target.value)}
+            >
+              <option value="">Todos los estados</option>
+              <option value="Óptimo">Óptimo</option>
+              <option value="Reponer">Reponer</option>
+              <option value="Sin consumo">Sin consumo</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" className="btn-primary px-5 flex-1 sm:flex-none">Buscar</button>
+            <button
+              type="button"
+              className="btn-secondary flex-1 sm:flex-none"
+              onClick={() => { setBusqueda(''); setCategoriaFiltro(''); setEstadoFiltro(''); cargar() }}
+            >
+              Limpiar
+            </button>
+          </div>
         </form>
       </div>
 

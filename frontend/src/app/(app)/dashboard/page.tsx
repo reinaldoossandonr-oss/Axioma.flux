@@ -164,15 +164,16 @@ export default function DashboardPage() {
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
-          <p className="text-slate-400 text-sm">Resumen de inventario en tiempo real</p>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">Dashboard</h1>
+          <p className="text-slate-400 text-sm hidden sm:block">Resumen de inventario en tiempo real</p>
         </div>
-        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2">
+        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
           <span className="text-lg font-light leading-none">+</span>
-          Nueva orden
+          <span className="hidden sm:inline">Nueva orden</span>
+          <span className="sm:hidden">Orden</span>
         </Link>
       </div>
       {children}
@@ -182,14 +183,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-5 animate-pulse">
-      <div className="grid grid-cols-4 gap-4">
+    <div className="space-y-4 md:space-y-5 animate-pulse">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
         {[1,2,3,4].map(i => <div key={i} className="h-24 bg-white rounded-xl" />)}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        {[1,2].map(i => <div key={i} className="h-64 bg-white rounded-xl" />)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+        {[1,2].map(i => <div key={i} className="h-52 bg-white rounded-xl" />)}
       </div>
-      <div className="h-96 bg-white rounded-xl" />
+      <div className="h-72 bg-white rounded-xl" />
     </div>
   )
 }

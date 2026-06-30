@@ -27,29 +27,30 @@ export default function OrdenesPage() {
   useEffect(() => { cargar() }, [])
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Órdenes de movimiento</h1>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">Órdenes de movimiento</h1>
           <p className="text-slate-400 text-sm">{ordenes.length} órdenes encontradas</p>
         </div>
-        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2">
+        <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
           <span className="text-lg font-light leading-none">+</span>
-          Nueva orden
+          <span className="hidden sm:inline">Nueva orden</span>
+          <span className="sm:hidden">Orden</span>
         </Link>
       </div>
 
       {/* Filtros */}
       <div className="card">
-        <div className="flex flex-wrap gap-3">
-          <select className="input w-44" value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)}>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <select className="input flex-1 sm:w-44 sm:flex-none" value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)}>
             <option value="">Todos los tipos</option>
             <option value="ingreso">Ingreso</option>
             <option value="salida">Salida</option>
             <option value="ajuste">Ajuste</option>
             <option value="traslado">Traslado</option>
           </select>
-          <select className="input w-44" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
+          <select className="input flex-1 sm:w-44 sm:flex-none" value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}>
             <option value="">Todos los estados</option>
             <option value="borrador">Borrador</option>
             <option value="confirmado">Confirmado</option>

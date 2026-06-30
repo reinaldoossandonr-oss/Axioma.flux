@@ -81,15 +81,16 @@ export default function ProveedoresPage() {
   const mostrar = editando !== null || form.nombre !== ''
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Proveedores</h1>
-          <p className="text-slate-400 text-sm">Gestiona tus proveedores de mercancía</p>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">Proveedores</h1>
+          <p className="text-slate-400 text-sm hidden sm:block">Gestiona tus proveedores de mercancía</p>
         </div>
-        <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2">
+        <button onClick={abrirNuevo} className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
           <span className="text-lg font-light leading-none">+</span>
-          Nuevo proveedor
+          <span className="hidden sm:inline">Nuevo proveedor</span>
+          <span className="sm:hidden">Nuevo</span>
         </button>
       </div>
 
