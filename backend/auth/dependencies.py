@@ -14,7 +14,8 @@ CRÍTICO: empresa_id NUNCA viene del body/query — siempre del perfil en BD.
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel
 
 from config.settings import settings
@@ -41,10 +42,9 @@ def _decode_token(token: str) -> dict:
             settings.SUPABASE_JWT_SECRET,
             algorithms=["HS256"],
             audience="authenticated",
-            options={"verify_exp": True},
         )
         return payload
-    except JWTError as e:
+    except InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token inválido o expirado: {str(e)}",
