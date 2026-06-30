@@ -91,7 +91,7 @@ async def buscar_productos(
     db = get_user_client(user.token)
     res = (
         db.table("productos")
-        .select("id, sku, nombre, unidad_medida, costo_promedio, precio_venta, activo")
+        .select("*")
         .eq("activo", True)
         .or_(f"sku.ilike.{q}%,nombre.ilike.%{q}%")
         .order("sku")
