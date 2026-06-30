@@ -20,7 +20,7 @@ from uuid import UUID
 from datetime import date
 
 from auth.dependencies import CurrentUser, get_current_user, require_rol
-from database.client import get_user_client
+from database.client import get_user_client, get_admin_client
 from schemas.ordenes import (
     OrdenCreate, OrdenUpdate, OrdenOut, OrdenDetalle, AnularRequest, DetalleConProducto
 )
@@ -63,7 +63,8 @@ async def crear_orden(
     Crea la cabecera y todas las líneas en estado 'borrador'.
     Para confirmar la orden, usar POST /ordenes/{id}/confirmar.
     """
-    db = get_user_client(user.token)
+    # Usamos admin client para evitar problemas de RLS en INSERT
+    admin = get_admin_client()
 
     # 1. Insertar cabecera
     cabecera = {
@@ -74,9 +75,13 @@ async def crear_orden(
         "usuario_id": user.user_id,
         "estado": "borrador",
     }
-    res_orden = db.table("ordenes_movimiento").insert(cabecera).execute()
+    try:
+        res_orden = admin.table("ordenes_movimiento").insert(cabecera).execute()
+    except Exception as e:
+        raise HTTPException(500, f"Error al crear cabecera: {str(e)}")
+
     if not res_orden.data:
-        raise HTTPException(500, "Error al crear la orden")
+        raise HTTPException(500, "Error al crear la orden: sin datos devueltos")
 
     orden = res_orden.data[0]
     orden_id = orden["id"]
@@ -99,11 +104,15 @@ async def crear_orden(
             item["posicion_destino_id"] = str(linea.posicion_destino_id)
         lineas.append(item)
 
-    res_lineas = db.table("detalle_movimientos").insert(lineas).execute()
+    try:
+        res_lineas = admin.table("detalle_movimientos").insert(lineas).execute()
+    except Exception as e:
+        admin.table("ordenes_movimiento").delete().eq("id", orden_id).execute()
+        raise HTTPException(500, f"Error al insertar líneas: {str(e)}")
+
     if not res_lineas.data:
-        # Limpiar la cabecera si fallan las líneas
-        db.table("ordenes_movimiento").delete().eq("id", orden_id).execute()
-        raise HTTPException(500, "Error al insertar las líneas de la orden")
+        admin.table("ordenes_movimiento").delete().eq("id", orden_id).execute()
+        raise HTTPException(500, "Error al insertar las líneas: sin datos devueltos")
 
     return orden
 
