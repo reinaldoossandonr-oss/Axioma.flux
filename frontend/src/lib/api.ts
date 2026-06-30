@@ -50,7 +50,10 @@ export const dashboardApi = {
 // ── PRODUCTOS ────────────────────────────────────────────────
 export const productosApi = {
   listar: (params?: { q?: string; categoria_id?: string; estado?: string; page?: number }) => {
-    const qs = new URLSearchParams(params as any).toString()
+    const clean = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    )
+    const qs = new URLSearchParams(clean as any).toString()
     return apiFetch<any[]>(`/productos${qs ? `?${qs}` : ''}`)
   },
   buscar: (q: string) => apiFetch<any[]>(`/productos/buscar?q=${encodeURIComponent(q)}`),
