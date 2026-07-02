@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import AxiomaIcon from '@/components/ui/AxiomaIcon'
 
 const IMAGE_URL =
-  'https://axiomaanalytics.com/wp-content/uploads/2026/06/%C2%BFQue-es-la-analitica-y-por-que-es-clave-en-las-empresas.png'
+  ''
 
 export default function LoginPage() {
   const router = useRouter()
