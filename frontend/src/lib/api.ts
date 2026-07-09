@@ -68,7 +68,10 @@ export const productosApi = {
 // ── ÓRDENES ──────────────────────────────────────────────────
 export const ordenesApi = {
   listar: (params?: { tipo?: string; estado?: string; page?: number }) => {
-    const qs = new URLSearchParams(params as any).toString()
+    const clean = Object.fromEntries(
+      Object.entries(params ?? {}).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    )
+    const qs = new URLSearchParams(clean as any).toString()
     return apiFetch<any[]>(`/ordenes${qs ? `?${qs}` : ''}`)
   },
   obtener: (id: string) => apiFetch<any>(`/ordenes/${id}`),
@@ -100,6 +103,8 @@ export const ubicacionesApi = {
   crear: (data: any) => apiFetch<any>('/ubicaciones', { method: 'POST', body: JSON.stringify(data) }),
   posiciones: (ubicacionId: string) =>
     apiFetch<any[]>(`/ubicaciones/${ubicacionId}/posiciones`),
+  stockPosiciones: (ubicacionId: string) =>
+    apiFetch<{ posicion_id: string; stock_total: number }[]>(`/ubicaciones/${ubicacionId}/stock-posiciones`),
 }
 
 export const posicionesApi = {
