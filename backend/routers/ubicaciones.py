@@ -99,6 +99,36 @@ async def listar_posiciones(
     return q.order("codigo").execute().data
 
 
+@router.get(
+    "/ubicaciones/{ubicacion_id}/stock-posiciones",
+    summary="Unidades en stock por posición dentro de una ubicación",
+)
+async def stock_posiciones_ubicacion(
+    ubicacion_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """
+    Suma el stock actual (todos los productos) por cada posición de la
+    ubicación indicada, a partir de la vista v_stock_por_posicion.
+    Devuelve {posicion_id: stock_total}, listo para cruzar con /ubicaciones/{id}/posiciones.
+    """
+    db = get_user_client(user.token)
+    res = (
+        db.table("v_stock_por_posicion")
+        .select("posicion_id, stock_posicion")
+        .eq("empresa_id", user.empresa_id)
+        .eq("ubicacion_id", str(ubicacion_id))
+        .execute()
+    )
+
+    totales: dict[str, float] = {}
+    for row in res.data:
+        pid = row["posicion_id"]
+        totales[pid] = totales.get(pid, 0) + (row["stock_posicion"] or 0)
+
+    return [{"posicion_id": pid, "stock_total": total} for pid, total in totales.items()]
+
+
 @router.post(
     "/posiciones",
     response_model=PosicionOut,
