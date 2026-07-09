@@ -17,7 +17,7 @@ interface Posicion {
   zona: string
   rack: string
   nivel: string
-  capacidad?: number
+  capacidad_maxima?: number
   activo: boolean
 }
 
@@ -25,6 +25,7 @@ export default function UbicacionesPage() {
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([])
   const [seleccionada, setSeleccionada] = useState<Ubicacion | null>(null)
   const [posiciones, setPosiciones] = useState<Posicion[]>([])
+  const [stockPorPosicion, setStockPorPosicion] = useState<Record<string, number>>({})
   const [loadingUbic, setLoadingUbic] = useState(true)
   const [loadingPos, setLoadingPos] = useState(false)
   const [formUbic, setFormUbic] = useState({ nombre: '', tipo: 'almacen', descripcion: '' })
@@ -44,8 +45,14 @@ export default function UbicacionesPage() {
   async function cargarPosiciones(ubicId: string) {
     setLoadingPos(true)
     try {
-      const data = await ubicacionesApi.posiciones(ubicId)
-      setPosiciones(data)
+      const [posicionesData, stockData] = await Promise.all([
+        ubicacionesApi.posiciones(ubicId),
+        ubicacionesApi.stockPosiciones(ubicId).catch(() => []),
+      ])
+      setPosiciones(posicionesData)
+      setStockPorPosicion(
+        Object.fromEntries(stockData.map(s => [s.posicion_id, s.stock_total]))
+      )
     } finally {
       setLoadingPos(false)
     }
@@ -229,6 +236,7 @@ export default function UbicacionesPage() {
                         <th className="table-th">Zona</th>
                         <th className="table-th">Rack</th>
                         <th className="table-th">Nivel</th>
+                        <th className="table-th text-right">Unidades</th>
                         <th className="table-th text-right">Capacidad</th>
                         <th className="table-th">Estado</th>
                       </tr>
@@ -242,8 +250,11 @@ export default function UbicacionesPage() {
                           <td className="table-td text-slate-500">{pos.zona}</td>
                           <td className="table-td text-slate-500">{pos.rack}</td>
                           <td className="table-td text-slate-500">{pos.nivel}</td>
+                          <td className="table-td text-right font-semibold text-slate-700">
+                            {stockPorPosicion[pos.id]?.toLocaleString('es-CL') ?? 0}
+                          </td>
                           <td className="table-td text-right text-slate-500">
-                            {pos.capacidad ?? '∞'}
+                            {pos.capacidad_maxima ?? '∞'}
                           </td>
                           <td className="table-td">
                             <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
