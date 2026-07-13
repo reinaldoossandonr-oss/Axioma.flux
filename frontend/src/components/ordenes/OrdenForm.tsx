@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { productosApi, ordenesApi, posicionesApi } from '@/lib/api'
-import type { LineaOrdenForm, TipoMovimiento } from '@/types'
+import type { LineaOrdenForm, TipoMovimiento, MotivoAjuste } from '@/types'
 
 const TIPO_LABELS: Record<TipoMovimiento, string> = {
   ingreso: 'Ingreso (entrada de mercadería)',
@@ -12,12 +12,20 @@ const TIPO_LABELS: Record<TipoMovimiento, string> = {
   traslado: 'Traslado entre posiciones',
 }
 
+const MOTIVO_LABELS: Record<MotivoAjuste, string> = {
+  merma: 'Merma (pérdida: rotura, vencimiento, robo, error)',
+  sobrante: 'Sobrante (se encontró más stock del registrado)',
+  conteo_fisico: 'Conteo físico (corrección de inventario)',
+  otro: 'Otro',
+}
+
 export default function OrdenForm() {
   const router = useRouter()
   const searchRef = useRef<HTMLInputElement>(null)
 
   // ── Estado del formulario ──────────────────────────────────
   const [tipo, setTipo] = useState<TipoMovimiento>('ingreso')
+  const [motivo, setMotivo] = useState<MotivoAjuste>('merma')
   const [referencia, setReferencia] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [lineas, setLineas] = useState<LineaOrdenForm[]>([])
@@ -113,6 +121,7 @@ export default function OrdenForm() {
     try {
       const payload = {
         tipo,
+        motivo: tipo === 'ajuste' ? motivo : null,
         referencia: referencia || null,
         observaciones: observaciones || null,
         lineas: lineas.map(l => ({
@@ -158,9 +167,10 @@ export default function OrdenForm() {
     if (id) router.push('/ordenes')
   }
 
-  const mostrarCosto = tipo === 'ingreso' || tipo === 'ajuste'
-  const mostrarOrigen = tipo === 'salida' || tipo === 'traslado'
-  const mostrarDestino = tipo === 'ingreso' || tipo === 'traslado' || tipo === 'ajuste'
+  const esMerma = tipo === 'ajuste' && motivo === 'merma'
+  const mostrarCosto = tipo === 'ingreso' || (tipo === 'ajuste' && !esMerma)
+  const mostrarOrigen = tipo === 'salida' || tipo === 'traslado' || esMerma
+  const mostrarDestino = tipo === 'ingreso' || tipo === 'traslado' || (tipo === 'ajuste' && !esMerma)
 
   return (
     <div className="space-y-5">
@@ -176,6 +186,20 @@ export default function OrdenForm() {
               ))}
             </select>
           </div>
+          {tipo === 'ajuste' && (
+            <div>
+              <label className="label">Motivo del ajuste *</label>
+              <select
+                className="input"
+                value={motivo}
+                onChange={e => setMotivo(e.target.value as MotivoAjuste)}
+              >
+                {Object.entries(MOTIVO_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Referencia (opcional)</label>
             <input
@@ -416,6 +440,7 @@ export default function OrdenForm() {
               Esta acción procesará {lineas.length} producto(s) de forma atómica.
               {tipo === 'salida' && ' Se validará el stock disponible antes de confirmar.'}
               {tipo === 'ingreso' && ' El costo promedio (CPP) se recalculará automáticamente.'}
+              {esMerma && ' Se validará el stock disponible y se registrará como merma en el dashboard, valorizada al costo promedio (CPP) vigente.'}
             </p>
 
             <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-1 text-sm">

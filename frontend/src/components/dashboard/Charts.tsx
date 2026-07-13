@@ -18,6 +18,11 @@ const PALETTE = [
   '#1AABF0', '#10B981', '#F59E0B', '#8B5CF6',
   '#EF4444', '#06B6D4', '#84CC16', '#F97316',
 ]
+// Paleta en tonos rojo/rosa para resaltar que representa pérdida (merma)
+const PALETTE_MERMA = [
+  '#E11D48', '#F43F5E', '#FB7185', '#BE123C',
+  '#9F1239', '#FDA4AF', '#881337', '#F87171',
+]
 
 // ── GRÁFICO 1: Stock por categoría (barras) ──────────────────
 interface StockCategoriaProps {
@@ -159,6 +164,57 @@ export function ValorCategoriaChart({ data }: ValorCategoriaProps) {
                 ` $${ctx.parsed.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
             },
           },
+        },
+      }}
+    />
+  )
+}
+
+// ── GRÁFICO 4: Merma en valor por categoría (barras) ─────────
+interface MermaCategoriaProps {
+  data: { categoria: string; cantidad_total: number; valor_total: number }[]
+}
+
+export function MermaCategoriaChart({ data }: MermaCategoriaProps) {
+  if (!data?.length) return <EmptyChart mensaje="Sin merma registrada" />
+
+  const chartData = {
+    labels: data.map(d => d.categoria),
+    datasets: [
+      {
+        label: 'Merma en valor ($)',
+        data: data.map(d => d.valor_total ?? 0),
+        backgroundColor: PALETTE_MERMA.slice(0, data.length),
+        borderRadius: 6,
+        borderSkipped: false,
+      },
+    ],
+  }
+
+  return (
+    <Bar
+      data={chartData}
+      options={{
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` $${(ctx.parsed.x ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { color: '#F1F5F9' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => `$${Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
+            },
+          },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } },
         },
       }}
     />

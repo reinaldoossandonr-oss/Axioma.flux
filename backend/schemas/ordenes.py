@@ -48,6 +48,7 @@ class DetalleConProducto(DetalleOut):
 
 class OrdenCreate(BaseModel):
     tipo: str                               # ingreso | salida | ajuste | traslado
+    motivo: Optional[str] = None            # solo aplica a tipo='ajuste' (merma | sobrante | conteo_fisico | otro)
     referencia: Optional[str] = None
     observaciones: Optional[str] = None
     lineas: list[DetalleCreate]             # mínimo 1 línea
@@ -60,10 +61,26 @@ class OrdenCreate(BaseModel):
             raise ValueError(f"tipo debe ser uno de: {', '.join(validos)}")
         return v
 
+    @field_validator("motivo")
+    @classmethod
+    def motivo_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        validos = {"merma", "sobrante", "conteo_fisico", "otro"}
+        if v not in validos:
+            raise ValueError(f"motivo debe ser uno de: {', '.join(validos)}")
+        return v
+
     @model_validator(mode="after")
     def al_menos_una_linea(self) -> "OrdenCreate":
         if not self.lineas:
             raise ValueError("La orden debe tener al menos una línea")
+        return self
+
+    @model_validator(mode="after")
+    def motivo_solo_en_ajuste(self) -> "OrdenCreate":
+        if self.motivo is not None and self.tipo != "ajuste":
+            raise ValueError("motivo solo puede especificarse cuando tipo='ajuste'")
         return self
 
 class OrdenUpdate(BaseModel):
@@ -78,6 +95,7 @@ class OrdenOut(BaseModel):
     id: UUID
     empresa_id: UUID
     tipo: str
+    motivo: Optional[str] = None
     fecha: datetime
     referencia: Optional[str]
     observaciones: Optional[str]

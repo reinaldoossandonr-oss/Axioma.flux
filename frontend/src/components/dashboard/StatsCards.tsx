@@ -12,6 +12,7 @@ interface Props {
     productos_a_reponer: number
     valor_inventario_total: number
     ordenes_pendientes: number
+    merma_valor_total: number
   }
 }
 
@@ -44,10 +45,17 @@ export default function StatsCards({ resumen }: Props) {
       color: 'bg-amber-500',
       icon: <ClockIcon />,
     },
+    {
+      label: 'Merma en valor',
+      value: `$${resumen.merma_valor_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
+      subtitle: 'Acumulado histórico, a CPP',
+      color: 'bg-rose-600',
+      icon: <TrashIcon />,
+    },
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
       {stats.map((stat) => (
         <div key={stat.label} className="card flex items-center gap-4">
           <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
@@ -95,6 +103,14 @@ function ClockIcon() {
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+function TrashIcon() {
+  return (
+    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
     </svg>
   )
 }

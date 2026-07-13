@@ -70,6 +70,7 @@ async def crear_orden(
     cabecera = {
         "empresa_id": user.empresa_id,
         "tipo": body.tipo,
+        "motivo": body.motivo,
         "referencia": body.referencia,
         "observaciones": body.observaciones,
         "usuario_id": user.perfil_id,

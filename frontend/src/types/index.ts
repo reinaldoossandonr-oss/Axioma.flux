@@ -86,11 +86,14 @@ export interface ProductoConStock extends Producto {
 
 export type TipoMovimiento = 'ingreso' | 'salida' | 'ajuste' | 'traslado'
 export type EstadoOrden = 'borrador' | 'confirmado' | 'anulado'
+// Solo aplica cuando tipo === 'ajuste'. merma resta stock; el resto suma.
+export type MotivoAjuste = 'merma' | 'sobrante' | 'conteo_fisico' | 'otro'
 
 export interface OrdenMovimiento {
   id: string
   empresa_id: string
   tipo: TipoMovimiento
+  motivo?: MotivoAjuste
   fecha: string
   referencia?: string
   observaciones?: string
@@ -138,6 +141,13 @@ export interface DashboardResumen {
   productos_a_reponer: number
   valor_inventario_total: number
   ordenes_pendientes: number
+  merma_valor_total: number
+}
+
+export interface MermaCategoria {
+  categoria: string
+  cantidad_total: number
+  valor_total: number
 }
 
 export interface StockCategoria {

@@ -161,6 +161,9 @@ CREATE TABLE IF NOT EXISTS ordenes_movimiento (
     empresa_id   UUID         NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
     tipo         TEXT         NOT NULL
                               CHECK (tipo IN ('ingreso','salida','ajuste','traslado')),
+    -- Solo aplica a tipo='ajuste'. motivo=merma resta stock (pérdida);
+    -- sobrante/conteo_fisico/otro suman (comportamiento histórico de ajuste positivo).
+    motivo       TEXT         CHECK (motivo IS NULL OR motivo IN ('merma','sobrante','conteo_fisico','otro')),
     fecha        TIMESTAMPTZ  NOT NULL DEFAULT now(),
     referencia   TEXT,         -- número de factura, OC, etc.
     observaciones TEXT,
@@ -311,7 +314,8 @@ AS $$
       CASE om.tipo
         WHEN 'ingreso'  THEN  dm.cantidad
         WHEN 'salida'   THEN -dm.cantidad
-        WHEN 'ajuste'   THEN  dm.cantidad   -- ajuste positivo; usar salida para reducción
+        WHEN 'ajuste'   THEN
+          CASE WHEN om.motivo = 'merma' THEN -dm.cantidad ELSE dm.cantidad END
         ELSE 0                               -- traslado no cambia stock total
       END
     ), 0
@@ -345,7 +349,10 @@ AS $$
         WHEN om.tipo = 'salida'   AND dm.posicion_origen_id  = p_posicion_id THEN -dm.cantidad
         WHEN om.tipo = 'traslado' AND dm.posicion_destino_id = p_posicion_id THEN  dm.cantidad
         WHEN om.tipo = 'traslado' AND dm.posicion_origen_id  = p_posicion_id THEN -dm.cantidad
-        WHEN om.tipo = 'ajuste'   AND dm.posicion_destino_id = p_posicion_id THEN  dm.cantidad
+        WHEN om.tipo = 'ajuste'   AND om.motivo = 'merma'
+             AND dm.posicion_origen_id  = p_posicion_id THEN -dm.cantidad
+        WHEN om.tipo = 'ajuste'   AND COALESCE(om.motivo,'') <> 'merma'
+             AND dm.posicion_destino_id = p_posicion_id THEN  dm.cantidad
         ELSE 0
       END
     ), 0
@@ -416,6 +423,7 @@ DECLARE
   v_cpp_actual     NUMERIC;
   v_cpp_nuevo      NUMERIC;
   v_costo_total    NUMERIC := 0;
+  v_es_merma       BOOLEAN;
 BEGIN
 
   -- 1. Obtener y bloquear la orden (previene condiciones de carrera)
@@ -440,14 +448,15 @@ BEGIN
   END IF;
 
   v_empresa_id := v_orden.empresa_id;
+  v_es_merma   := (v_orden.tipo = 'ajuste' AND v_orden.motivo = 'merma');
 
   -- 4. Procesar cada línea de la orden
   FOR v_detalle IN
     SELECT * FROM detalle_movimientos WHERE orden_id = p_orden_id ORDER BY created_at
   LOOP
 
-    -- ── SALIDA / TRASLADO: validar stock suficiente ──────────────────────
-    IF v_orden.tipo IN ('salida', 'traslado') THEN
+    -- ── SALIDA / TRASLADO / AJUSTE-MERMA: validar stock suficiente ───────
+    IF v_orden.tipo IN ('salida', 'traslado') OR v_es_merma THEN
 
       -- Traslado: verificar stock en la posición de origen
       IF v_orden.tipo = 'traslado' AND v_detalle.posicion_origen_id IS NOT NULL THEN
@@ -472,8 +481,8 @@ BEGIN
              )
       WHERE  id = v_detalle.id;
 
-      -- Actualizar lote si aplica
-      IF v_detalle.lote_id IS NOT NULL AND v_orden.tipo = 'salida' THEN
+      -- Actualizar lote si aplica (salida o ajuste por merma)
+      IF v_detalle.lote_id IS NOT NULL AND (v_orden.tipo = 'salida' OR v_es_merma) THEN
         UPDATE lotes
         SET    cantidad_disponible = cantidad_disponible - v_detalle.cantidad
         WHERE  id          = v_detalle.lote_id
@@ -587,7 +596,7 @@ BEGIN
       WHERE  dm.orden_id  = p_orden_id
         AND  dm.lote_id   = l.id
         AND  dm.lote_id IS NOT NULL;
-    ELSIF v_orden.tipo = 'salida' THEN
+    ELSIF v_orden.tipo = 'salida' OR (v_orden.tipo = 'ajuste' AND v_orden.motivo = 'merma') THEN
       UPDATE lotes l
       SET    cantidad_disponible = l.cantidad_disponible + dm.cantidad
       FROM   detalle_movimientos dm
@@ -696,7 +705,7 @@ SELECT
     CASE om.tipo
       WHEN 'ingreso' THEN  dm.cantidad
       WHEN 'salida'  THEN -dm.cantidad
-      WHEN 'ajuste'  THEN  dm.cantidad
+      WHEN 'ajuste'  THEN CASE WHEN om.motivo = 'merma' THEN -dm.cantidad ELSE dm.cantidad END
       ELSE 0
     END
   ), 0)               AS stock_actual,
@@ -711,7 +720,7 @@ SELECT
     CASE om.tipo
       WHEN 'ingreso' THEN  dm.cantidad
       WHEN 'salida'  THEN -dm.cantidad
-      WHEN 'ajuste'  THEN  dm.cantidad
+      WHEN 'ajuste'  THEN CASE WHEN om.motivo = 'merma' THEN -dm.cantidad ELSE dm.cantidad END
       ELSE 0
     END
   ), 0)               AS valor_inventario
@@ -764,7 +773,11 @@ SELECT
   pos.nivel,
   SUM(
     CASE
-      WHEN om.tipo IN ('ingreso','ajuste') AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ingreso' AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ajuste' AND COALESCE(om.motivo,'') <> 'merma'
+           AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ajuste' AND om.motivo = 'merma'
+           AND dm.posicion_origen_id = pos.id THEN -dm.cantidad
       WHEN om.tipo = 'salida'              AND dm.posicion_origen_id  = pos.id THEN -dm.cantidad
       WHEN om.tipo = 'traslado'            AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
       WHEN om.tipo = 'traslado'            AND dm.posicion_origen_id  = pos.id THEN -dm.cantidad
@@ -780,7 +793,11 @@ GROUP  BY dm.empresa_id, p.id, p.sku, p.nombre,
           u.id, u.nombre, pos.id, pos.codigo, pos.zona, pos.rack, pos.nivel
 HAVING SUM(
     CASE
-      WHEN om.tipo IN ('ingreso','ajuste') AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ingreso' AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ajuste' AND COALESCE(om.motivo,'') <> 'merma'
+           AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
+      WHEN om.tipo = 'ajuste' AND om.motivo = 'merma'
+           AND dm.posicion_origen_id = pos.id THEN -dm.cantidad
       WHEN om.tipo = 'salida'              AND dm.posicion_origen_id  = pos.id THEN -dm.cantidad
       WHEN om.tipo = 'traslado'            AND dm.posicion_destino_id = pos.id THEN  dm.cantidad
       WHEN om.tipo = 'traslado'            AND dm.posicion_origen_id  = pos.id THEN -dm.cantidad
@@ -821,6 +838,26 @@ WHERE om.tipo    = 'salida'
   AND om.fecha  >= now() - INTERVAL '12 months'
 GROUP BY dm.empresa_id, DATE_TRUNC('month', om.fecha)
 ORDER BY mes;
+
+-- ------------------------------------------------------------
+-- 7.6  v_dashboard_merma_categoria  —  merma en valor por categoría
+--      (acumulado histórico, tipo='ajuste' AND motivo='merma')
+-- ------------------------------------------------------------
+CREATE OR REPLACE VIEW v_dashboard_merma_categoria AS
+SELECT
+  dm.empresa_id,
+  c.id                                  AS categoria_id,
+  COALESCE(c.nombre, 'Sin categoría')   AS categoria,
+  SUM(dm.cantidad)                      AS cantidad_total,
+  SUM(dm.costo_total)                   AS valor_total
+FROM   detalle_movimientos dm
+JOIN   ordenes_movimiento  om ON dm.orden_id = om.id
+JOIN   productos           p  ON dm.producto_id = p.id
+LEFT JOIN categorias       c  ON p.categoria_id = c.id
+WHERE  om.tipo   = 'ajuste'
+  AND  om.motivo = 'merma'
+  AND  om.estado = 'confirmado'
+GROUP BY dm.empresa_id, c.id, c.nombre;
 
 
 -- ============================================================
@@ -947,6 +984,9 @@ GRANT EXECUTE ON FUNCTION anular_orden_movimiento(UUID, TEXT)       TO authentic
 
 -- auditoria: solo service_role puede insertar directamente (el trigger lo maneja)
 REVOKE INSERT, UPDATE, DELETE ON auditoria FROM authenticated;
+
+-- Vistas creadas después del GRANT masivo de la Sección 9 necesitan grant explícito
+GRANT SELECT ON v_dashboard_merma_categoria TO authenticated;
 
 
 -- ============================================================

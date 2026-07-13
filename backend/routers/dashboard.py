@@ -42,11 +42,21 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
         .execute()
     ).count or 0
 
+    # Merma en valor (acumulado histórico: tipo='ajuste' AND motivo='merma')
+    merma_res = (
+        db.table("v_dashboard_merma_categoria")
+        .select("valor_total")
+        .eq("empresa_id", user.empresa_id)
+        .execute()
+    ).data
+    merma_valor_total = sum((r.get("valor_total") or 0) for r in merma_res)
+
     return {
         "total_productos": total_productos,
         "productos_a_reponer": a_reponer,
         "valor_inventario_total": round(valor_total, 2),
         "ordenes_pendientes": ordenes_borrador,
+        "merma_valor_total": round(merma_valor_total, 2),
     }
 
 
@@ -114,6 +124,22 @@ async def alertas_reposicion(user: CurrentUser = Depends(get_current_user)):
         .eq("empresa_id", user.empresa_id)
         .eq("estado", "Reponer")
         .order("dias_inventario")
+        .execute()
+    ).data
+
+
+@router.get("/merma-categorias", summary="Merma en valor por categoría (gráfico)")
+async def merma_por_categoria(user: CurrentUser = Depends(get_current_user)):
+    """
+    Fuente: v_dashboard_merma_categoria (acumulado histórico).
+    Solo incluye órdenes confirmadas tipo='ajuste' con motivo='merma'.
+    """
+    db = get_user_client(user.token)
+    return (
+        db.table("v_dashboard_merma_categoria")
+        .select("categoria, cantidad_total, valor_total")
+        .eq("empresa_id", user.empresa_id)
+        .order("valor_total", desc=True)
         .execute()
     ).data
 
