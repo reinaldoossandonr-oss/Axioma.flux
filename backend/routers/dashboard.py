@@ -144,6 +144,22 @@ async def merma_por_categoria(user: CurrentUser = Depends(get_current_user)):
     ).data
 
 
+@router.get("/merma-diaria", summary="Evolución diaria de la merma (últimos 90 días)")
+async def merma_diaria(user: CurrentUser = Depends(get_current_user)):
+    """
+    Fuente: v_dashboard_merma_diaria (ventana móvil de 90 días).
+    Solo incluye órdenes confirmadas tipo='ajuste' con motivo='merma'.
+    """
+    db = get_user_client(user.token)
+    return (
+        db.table("v_dashboard_merma_diaria")
+        .select("dia, cantidad_total, valor_total")
+        .eq("empresa_id", user.empresa_id)
+        .order("dia")
+        .execute()
+    ).data
+
+
 @router.get("/stock-posiciones", summary="Stock por posición física (Zona-Rack-Nivel)")
 async def stock_posiciones(user: CurrentUser = Depends(get_current_user)):
     """

@@ -150,6 +150,12 @@ export interface MermaCategoria {
   valor_total: number
 }
 
+export interface MermaDiaria {
+  dia: string
+  cantidad_total: number
+  valor_total: number
+}
+
 export interface StockCategoria {
   categoria: string
   total_productos: number

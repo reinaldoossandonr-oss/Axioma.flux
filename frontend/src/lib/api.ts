@@ -46,6 +46,7 @@ export const dashboardApi = {
   alertas:          () => apiFetch<any[]>('/dashboard/alertas'),
   stockPosiciones:  () => apiFetch<any[]>('/dashboard/stock-posiciones'),
   mermaCategorias:  () => apiFetch<any[]>('/dashboard/merma-categorias'),
+  mermaDiaria:      () => apiFetch<any[]>('/dashboard/merma-diaria'),
 }
 
 // ── PRODUCTOS ────────────────────────────────────────────────

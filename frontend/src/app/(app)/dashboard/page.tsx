@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { dashboardApi } from '@/lib/api'
 import StatsCards from '@/components/dashboard/StatsCards'
-import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart } from '@/components/dashboard/Charts'
+import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart } from '@/components/dashboard/Charts'
 import { EstadoBadge } from '@/components/ui/Badge'
 
 export default function DashboardPage() {
@@ -14,18 +14,20 @@ export default function DashboardPage() {
   const [tabla, setTabla] = useState<any[]>([])
   const [alertas, setAlertas] = useState<any[]>([])
   const [mermaCat, setMermaCat] = useState<any[]>([])
+  const [mermaDia, setMermaDia] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [r, sc, sl, t, al, mc] = await Promise.all([
+        const [r, sc, sl, t, al, mc, md] = await Promise.all([
           dashboardApi.resumen(),
           dashboardApi.stockCategorias(),
           dashboardApi.salidasMensuales(),
           dashboardApi.tablaPrincipal(),
           dashboardApi.alertas(),
           dashboardApi.mermaCategorias(),
+          dashboardApi.mermaDiaria(),
         ])
         setResumen(r)
         setStockCat(sc)
@@ -33,6 +35,7 @@ export default function DashboardPage() {
         setTabla(t)
         setAlertas(al)
         setMermaCat(mc)
+        setMermaDia(md)
       } catch (e) {
         console.error(e)
       } finally {
@@ -63,10 +66,20 @@ export default function DashboardPage() {
             <SalidasMensualesChart data={salidas} />
           </div>
         </div>
-        <div className="card lg:col-span-2">
+      </div>
+
+      {/* Merma: anillo por categoría + evolución diaria */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card">
           <h3 className="font-semibold text-slate-700 mb-4">Merma en Valor por Categoría</h3>
-          <div className="h-52">
+          <div className="h-64">
             <MermaCategoriaChart data={mermaCat} />
+          </div>
+        </div>
+        <div className="card">
+          <h3 className="font-semibold text-slate-700 mb-4">Evolución de la Merma (90 días)</h3>
+          <div className="h-64">
+            <MermaDiariaChart data={mermaDia} />
           </div>
         </div>
       </div>
@@ -197,7 +210,10 @@ function LoadingSkeleton() {
         {[1,2,3,4,5].map(i => <div key={i} className="h-24 bg-white rounded-xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        {[1,2,3].map(i => <div key={i} className="h-52 bg-white rounded-xl" />)}
+        {[1,2].map(i => <div key={i} className="h-52 bg-white rounded-xl" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+        {[1,2].map(i => <div key={i} className="h-64 bg-white rounded-xl" />)}
       </div>
       <div className="h-72 bg-white rounded-xl" />
     </div>

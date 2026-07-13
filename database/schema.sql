@@ -859,6 +859,25 @@ WHERE  om.tipo   = 'ajuste'
   AND  om.estado = 'confirmado'
 GROUP BY dm.empresa_id, c.id, c.nombre;
 
+-- ------------------------------------------------------------
+-- 7.7  v_dashboard_merma_diaria  —  evolución diaria de la merma
+--      (últimos 90 días)
+-- ------------------------------------------------------------
+CREATE OR REPLACE VIEW v_dashboard_merma_diaria AS
+SELECT
+  dm.empresa_id,
+  DATE_TRUNC('day', om.fecha)::date  AS dia,
+  SUM(dm.cantidad)                   AS cantidad_total,
+  SUM(dm.costo_total)                AS valor_total
+FROM   detalle_movimientos dm
+JOIN   ordenes_movimiento  om ON dm.orden_id = om.id
+WHERE  om.tipo    = 'ajuste'
+  AND  om.motivo  = 'merma'
+  AND  om.estado  = 'confirmado'
+  AND  om.fecha  >= now() - INTERVAL '90 days'
+GROUP BY dm.empresa_id, DATE_TRUNC('day', om.fecha)
+ORDER BY dia;
+
 
 -- ============================================================
 -- SECCIÓN 8: ROW LEVEL SECURITY (RLS)
@@ -987,6 +1006,7 @@ REVOKE INSERT, UPDATE, DELETE ON auditoria FROM authenticated;
 
 -- Vistas creadas después del GRANT masivo de la Sección 9 necesitan grant explícito
 GRANT SELECT ON v_dashboard_merma_categoria TO authenticated;
+GRANT SELECT ON v_dashboard_merma_diaria TO authenticated;
 
 
 -- ============================================================
