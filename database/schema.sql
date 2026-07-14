@@ -737,9 +737,24 @@ GROUP BY p.empresa_id, p.id, p.sku, p.nombre, c.nombre,
 -- ------------------------------------------------------------
 -- 7.2  v_tabla_principal  —  tabla dashboard con reglas de negocio
 -- ------------------------------------------------------------
+-- NOTA: columnas explícitas (no `va.*`) a propósito. Un `SELECT *` congela la
+-- lista de columnas al momento de crear la vista; si luego se agrega una
+-- columna a v_stock_actual, esta vista NO la hereda hasta que se recree
+-- explícitamente. Listar columnas evita ese bug de raíz.
 CREATE OR REPLACE VIEW v_tabla_principal AS
 SELECT
-  va.*,
+  va.empresa_id,
+  va.producto_id,
+  va.sku,
+  va.nombre,
+  va.categoria,
+  va.unidad_medida,
+  va.costo_promedio,
+  va.precio_venta,
+  va.stock_minimo,
+  va.stock_actual,
+  va.consumo_promedio_diario,
+  va.valor_inventario,
   -- Días de inventario
   CASE
     WHEN va.consumo_promedio_diario = 0 THEN NULL
@@ -755,7 +770,8 @@ SELECT
   CASE
     WHEN va.consumo_promedio_diario = 0 THEN 0
     ELSE GREATEST(0, ROUND((va.consumo_promedio_diario * 30 * 45) - va.stock_actual, 3))
-  END                 AS cantidad_reponer
+  END                 AS cantidad_reponer,
+  va.imagen_url
 FROM v_stock_actual va;
 
 -- ------------------------------------------------------------

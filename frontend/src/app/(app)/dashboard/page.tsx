@@ -16,31 +16,41 @@ export default function DashboardPage() {
   const [mermaCat, setMermaCat] = useState<any[]>([])
   const [mermaDia, setMermaDia] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
-      try {
-        const [r, sc, sl, t, al, mc, md] = await Promise.all([
-          dashboardApi.resumen(),
-          dashboardApi.stockCategorias(),
-          dashboardApi.salidasMensuales(),
-          dashboardApi.tablaPrincipal(),
-          dashboardApi.alertas(),
-          dashboardApi.mermaCategorias(),
-          dashboardApi.mermaDiaria(),
-        ])
-        setResumen(r)
-        setStockCat(sc)
-        setSalidas(sl)
-        setTabla(t)
-        setAlertas(al)
-        setMermaCat(mc)
-        setMermaDia(md)
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
+      // Promise.allSettled en vez de Promise.all: si UNA llamada falla
+      // (ej. un endpoint nuevo, una vista que cambió), las demás igual
+      // se muestran en vez de dejar todo el dashboard en blanco.
+      const [r, sc, sl, t, al, mc, md] = await Promise.allSettled([
+        dashboardApi.resumen(),
+        dashboardApi.stockCategorias(),
+        dashboardApi.salidasMensuales(),
+        dashboardApi.tablaPrincipal(),
+        dashboardApi.alertas(),
+        dashboardApi.mermaCategorias(),
+        dashboardApi.mermaDiaria(),
+      ])
+
+      const fallidas: string[] = []
+      if (r.status === 'fulfilled') setResumen(r.value); else fallidas.push('resumen')
+      if (sc.status === 'fulfilled') setStockCat(sc.value); else fallidas.push('stock por categoría')
+      if (sl.status === 'fulfilled') setSalidas(sl.value); else fallidas.push('salidas mensuales')
+      if (t.status === 'fulfilled') setTabla(t.value); else fallidas.push('inventario general')
+      if (al.status === 'fulfilled') setAlertas(al.value); else fallidas.push('alertas de reposición')
+      if (mc.status === 'fulfilled') setMermaCat(mc.value); else fallidas.push('merma por categoría')
+      if (md.status === 'fulfilled') setMermaDia(md.value); else fallidas.push('evolución de merma')
+
+      if (fallidas.length > 0) {
+        console.error('Fallaron estas secciones del dashboard:', fallidas,
+          { r, sc, sl, t, al, mc, md })
+        setErrorCarga(`No se pudo cargar: ${fallidas.join(', ')}. Revisa la consola para más detalle.`)
+      } else {
+        setErrorCarga(null)
       }
+
+      setLoading(false)
     }
     load()
   }, [])
@@ -49,6 +59,12 @@ export default function DashboardPage() {
 
   return (
     <PageShell>
+      {errorCarga && (
+        <div className="bg-amber-50 text-amber-700 text-sm rounded-xl px-5 py-3 border border-amber-200">
+          {errorCarga}
+        </div>
+      )}
+
       {/* Stats */}
       {resumen && <StatsCards resumen={resumen} />}
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AxiomaIcon from '@/components/ui/AxiomaIcon'
 
-const IMAGE_URL = '/hero-login.png'
+const IMAGE_URL = '/hero-login.jpg'
 
 export default function LoginPage() {
   const router = useRouter()

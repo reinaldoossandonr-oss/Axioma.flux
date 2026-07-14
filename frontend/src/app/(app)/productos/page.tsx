@@ -21,6 +21,7 @@ export default function ProductosPage() {
 
   async function cargar(q?: string, cat?: string, est?: string) {
     setLoading(true)
+    setErrorImagen(null)
     try {
       const data = await productosApi.listar({
         q: q || undefined,
@@ -28,6 +29,9 @@ export default function ProductosPage() {
         estado: est || undefined,
       })
       setProductos(data)
+    } catch (err: any) {
+      console.error(err)
+      setErrorImagen(err.message || 'No se pudo cargar la lista de productos')
     } finally {
       setLoading(false)
     }
