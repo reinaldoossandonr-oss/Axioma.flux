@@ -11,7 +11,7 @@ interface Props {
     total_productos: number
     productos_a_reponer: number
     valor_inventario_total: number
-    ordenes_pendientes: number
+    tasa_ocupacion_almacen: number
     merma_valor_total: number
   }
 }
@@ -39,11 +39,11 @@ export default function StatsCards({ resumen }: Props) {
       icon: <ChartIcon />,
     },
     {
-      label: 'Órdenes pendientes',
-      value: resumen.ordenes_pendientes,
-      subtitle: 'En estado borrador',
+      label: 'Ocupación del almacén',
+      value: `${resumen.tasa_ocupacion_almacen}%`,
+      subtitle: 'Posiciones con stock',
       color: 'bg-amber-500',
-      icon: <ClockIcon />,
+      icon: <WarehouseIcon />,
     },
     {
       label: 'Merma en valor',
@@ -98,11 +98,11 @@ function ChartIcon() {
     </svg>
   )
 }
-function ClockIcon() {
+function WarehouseIcon() {
   return (
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        d="M3 21V10l9-6 9 6v11h-6v-7H9v7H3z" />
     </svg>
   )
 }
