@@ -146,7 +146,7 @@ async def stock_posiciones_detalle(
     db = get_user_client(user.token)
     res = (
         db.table("v_stock_por_posicion")
-        .select("posicion_id, producto_id, sku, producto_nombre, stock_posicion")
+        .select("posicion_id, producto_id, sku, producto_nombre, stock_posicion, categoria_id, categoria_nombre")
         .eq("empresa_id", user.empresa_id)
         .eq("ubicacion_id", str(ubicacion_id))
         .execute()
@@ -163,6 +163,8 @@ async def stock_posiciones_detalle(
             "sku": row["sku"],
             "nombre": row["producto_nombre"],
             "stock": stock,
+            "categoria_id": row.get("categoria_id"),
+            "categoria_nombre": row.get("categoria_nombre"),
         })
 
     return [

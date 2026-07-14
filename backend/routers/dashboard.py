@@ -17,7 +17,7 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
     - Total productos activos
     - Productos a reponer
     - Valor total del inventario
-    - Órdenes pendientes (borrador)
+    - Tasa de ocupación del almacén (posiciones con stock / posiciones activas)
     """
     db = get_user_client(user.token)
 
@@ -33,15 +33,6 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
     a_reponer = sum(1 for r in stock_res if r.get("estado") == "Reponer")
     valor_total = sum((r.get("valor_inventario") or 0) for r in stock_res)
 
-    # Órdenes en borrador
-    ordenes_borrador = (
-        db.table("ordenes_movimiento")
-        .select("id", count="exact")
-        .eq("empresa_id", user.empresa_id)
-        .eq("estado", "borrador")
-        .execute()
-    ).count or 0
-
     # Merma en valor (acumulado histórico: tipo='ajuste' AND motivo='merma')
     merma_res = (
         db.table("v_dashboard_merma_categoria")
@@ -51,11 +42,33 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
     ).data
     merma_valor_total = sum((r.get("valor_total") or 0) for r in merma_res)
 
+    # Tasa de ocupación del almacén: posiciones activas con stock > 0 sobre el total de posiciones activas
+    total_posiciones = (
+        db.table("posiciones")
+        .select("id", count="exact")
+        .eq("empresa_id", user.empresa_id)
+        .eq("activo", True)
+        .execute()
+    ).count or 0
+
+    ocupadas_res = (
+        db.table("v_stock_por_posicion")
+        .select("posicion_id, stock_posicion")
+        .eq("empresa_id", user.empresa_id)
+        .gt("stock_posicion", 0)
+        .execute()
+    ).data
+    posiciones_ocupadas = len({r["posicion_id"] for r in ocupadas_res})
+
+    tasa_ocupacion_almacen = (
+        round((posiciones_ocupadas / total_posiciones) * 100, 1) if total_posiciones > 0 else 0
+    )
+
     return {
         "total_productos": total_productos,
         "productos_a_reponer": a_reponer,
         "valor_inventario_total": round(valor_total, 2),
-        "ordenes_pendientes": ordenes_borrador,
+        "tasa_ocupacion_almacen": tasa_ocupacion_almacen,
         "merma_valor_total": round(merma_valor_total, 2),
     }
 
