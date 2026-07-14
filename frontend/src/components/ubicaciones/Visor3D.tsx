@@ -18,6 +18,8 @@ export interface ProductoEnPosicion {
   sku: string
   nombre: string
   stock: number
+  categoria_id?: string | null
+  categoria_nombre?: string | null
 }
 
 interface Visor3DProps {
@@ -26,6 +28,8 @@ interface Visor3DProps {
   stockPorPosicion: Record<string, number>
   detallePorPosicion?: Record<string, ProductoEnPosicion[]>
   filtroSku?: string
+  filtroNombre?: string
+  filtroCategoriaId?: string
   onSeleccionarPosicion?: (posicion: PosicionVisor3D) => void
 }
 
@@ -40,6 +44,8 @@ function BinsInteractivos({
   stockPorPosicion,
   detallePorPosicion,
   filtroSku,
+  filtroNombre,
+  filtroCategoriaId,
   onSeleccionarPosicion,
 }: {
   scene: THREE.Object3D
@@ -47,6 +53,8 @@ function BinsInteractivos({
   stockPorPosicion: Record<string, number>
   detallePorPosicion: Record<string, ProductoEnPosicion[]>
   filtroSku?: string
+  filtroNombre?: string
+  filtroCategoriaId?: string
   onSeleccionarPosicion?: (posicion: PosicionVisor3D) => void
 }) {
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -68,15 +76,23 @@ function BinsInteractivos({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene, posiciones])
 
-  const filtroActivo = !!filtroSku && filtroSku.trim().length > 0
-  const filtroLower = filtroSku?.trim().toLowerCase() ?? ''
+  const skuActivo = !!filtroSku && filtroSku.trim().length > 0
+  const nombreActivo = !!filtroNombre && filtroNombre.trim().length > 0
+  const categoriaActiva = !!filtroCategoriaId && filtroCategoriaId.trim().length > 0
+  const filtroActivo = skuActivo || nombreActivo || categoriaActiva
+  const skuLower = filtroSku?.trim().toLowerCase() ?? ''
+  const nombreLower = filtroNombre?.trim().toLowerCase() ?? ''
 
   return (
     <>
       {bins.map(({ pos, geometry, matrix }) => {
         const stock = stockPorPosicion[pos.id] ?? 0
         const productos = detallePorPosicion[pos.id] ?? []
-        const coincideFiltro = filtroActivo && productos.some(p => p.sku.toLowerCase().includes(filtroLower))
+        const coincideFiltro = filtroActivo && productos.some(p =>
+          (!skuActivo || p.sku.toLowerCase().includes(skuLower)) &&
+          (!nombreActivo || p.nombre.toLowerCase().includes(nombreLower)) &&
+          (!categoriaActiva || p.categoria_id === filtroCategoriaId)
+        )
         const isHover = hoverId === pos.id
 
         let color = stock > 0 ? COLOR_CON_STOCK : COLOR_VACIO
@@ -165,6 +181,8 @@ function Modelo(props: Visor3DProps) {
         stockPorPosicion={props.stockPorPosicion}
         detallePorPosicion={props.detallePorPosicion ?? {}}
         filtroSku={props.filtroSku}
+        filtroNombre={props.filtroNombre}
+        filtroCategoriaId={props.filtroCategoriaId}
         onSeleccionarPosicion={props.onSeleccionarPosicion}
       />
     </>
@@ -192,7 +210,6 @@ export default function Visor3D(props: Visor3DProps) {
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       >
         <color attach="background" args={['#eef2f7']} />
-        <fog attach="fog" args={['#eef2f7', 20, 42]} />
         <ambientLight intensity={0.55} />
         <directionalLight
           position={[6, 11, 5]}
