@@ -120,15 +120,18 @@ function BinsInteractivos({
             </mesh>
             {isHover && (
               <Html distanceFactor={9} position={[0, 0.35, 0]} style={{ pointerEvents: 'none' }} center>
-                <div className="px-3 py-2 rounded-lg bg-slate-900/95 text-white text-xs shadow-2xl min-w-[150px] whitespace-nowrap">
+                <div className="px-3 py-2 rounded-lg bg-slate-900/95 text-white text-xs shadow-2xl min-w-[190px] max-w-[240px] whitespace-nowrap">
                   <p className="font-bold font-mono mb-1 text-[13px]">{pos.codigo}</p>
                   <p className="text-slate-300 mb-1">{stock.toLocaleString('es-CL')} unidades</p>
                   {productos.length > 0 ? (
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-1">
                       {productos.slice(0, 5).map(p => (
-                        <li key={p.producto_id} className="flex justify-between gap-3">
-                          <span className="truncate max-w-[110px]">{p.sku}</span>
-                          <span className="text-slate-400">{p.stock}</span>
+                        <li key={p.producto_id} className="flex flex-col">
+                          <div className="flex justify-between gap-3">
+                            <span className="font-mono text-slate-200 truncate max-w-[110px]">{p.sku}</span>
+                            <span className="text-slate-400">{p.stock.toLocaleString('es-CL')} u.</span>
+                          </div>
+                          <span className="text-slate-400 truncate whitespace-nowrap">{p.nombre}</span>
                         </li>
                       ))}
                       {productos.length > 5 && (
