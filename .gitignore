@@ -21,6 +21,8 @@ backend/.env
 # ── Node / Frontend ──────────────────────────────────────────
 node_modules/
 frontend/node_modules/
+node_modules_old_*/
+frontend/node_modules_old_*/
 frontend/.next/
 frontend/out/
 frontend/.turbo/
