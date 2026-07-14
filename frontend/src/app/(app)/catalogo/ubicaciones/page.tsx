@@ -1,8 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { ubicacionesApi, posicionesApi, ApiError } from '@/lib/api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ubicacionesApi, posicionesApi, categoriasApi, ApiError } from '@/lib/api'
 import Visor3D, { ProductoEnPosicion } from '@/components/ubicaciones/Visor3D'
+
+interface Categoria {
+  id: string
+  nombre: string
+}
 
 interface Ubicacion {
   id: string
@@ -41,7 +46,20 @@ export default function UbicacionesPage() {
   const [subiendoDiseno, setSubiendoDiseno] = useState(false)
   const [errorDiseno, setErrorDiseno] = useState<string | null>(null)
   const [filtroSku, setFiltroSku] = useState('')
+  const [filtroNombre, setFiltroNombre] = useState('')
+  const [filtroCategoriaId, setFiltroCategoriaId] = useState('')
+  const [categorias, setCategorias] = useState<Categoria[]>([])
   const disenoInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    categoriasApi.listar().then(setCategorias).catch(() => setCategorias([]))
+  }, [])
+
+  const tasaOcupacion = useMemo(() => {
+    if (posiciones.length === 0) return 0
+    const ocupadas = posiciones.filter(p => (stockPorPosicion[p.id] ?? 0) > 0).length
+    return Math.round((ocupadas / posiciones.length) * 1000) / 10
+  }, [posiciones, stockPorPosicion])
 
   async function cargarUbicaciones() {
     try {
@@ -79,6 +97,8 @@ export default function UbicacionesPage() {
     setSeleccionada(u)
     setVista('tabla')
     setFiltroSku('')
+    setFiltroNombre('')
+    setFiltroCategoriaId('')
     cargarPosiciones(u.id)
   }
 
@@ -201,52 +221,46 @@ export default function UbicacionesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Lista de ubicaciones */}
-        <div className="card lg:col-span-1">
+      <div className="space-y-4 md:space-y-5">
+        {/* Lista horizontal de ubicaciones */}
+        <div className="card">
           <h2 className="font-semibold text-slate-700 mb-3">Ubicaciones</h2>
           {loadingUbic ? (
-            <div className="space-y-2 animate-pulse">
-              {[1, 2, 3].map(i => <div key={i} className="h-10 bg-slate-100 rounded" />)}
+            <div className="flex gap-2 animate-pulse">
+              {[1, 2, 3].map(i => <div key={i} className="h-10 w-40 bg-slate-100 rounded-lg flex-shrink-0" />)}
             </div>
           ) : ubicaciones.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin ubicaciones</p>
           ) : (
-            <ul className="space-y-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {ubicaciones.map(u => (
-                <li key={u.id}>
-                  <button
-                    onClick={() => seleccionar(u)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                <button
+                  key={u.id}
+                  onClick={() => seleccionar(u)}
+                  className={`flex-shrink-0 text-left px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${
+                    seleccionada?.id === u.id
+                      ? 'bg-primary text-white'
+                      : 'hover:bg-slate-50 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <span className="font-medium">{u.nombre}</span>
+                  {u.tipo && (
+                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
                       seleccionada?.id === u.id
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span className="font-medium">{u.nombre}</span>
-                    {u.tipo && (
-                      <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
-                        seleccionada?.id === u.id
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {u.tipo}
-                      </span>
-                    )}
-                    {u.descripcion && (
-                      <p className={`text-xs mt-0.5 ${seleccionada?.id === u.id ? 'text-white/70' : 'text-slate-400'}`}>
-                        {u.descripcion}
-                      </p>
-                    )}
-                  </button>
-                </li>
+                        ? 'bg-white/20 text-white'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {u.tipo}
+                    </span>
+                  )}
+                </button>
               ))}
-            </ul>
+            </div>
           )}
         </div>
 
-        {/* Posiciones de la ubicación seleccionada */}
-        <div className="card lg:col-span-2">
+        {/* Posiciones de la ubicación seleccionada — usa todo el ancho para que el visor 3D tenga más espacio */}
+        <div className="card">
           {!seleccionada ? (
             <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
               Selecciona una ubicación para ver sus posiciones
@@ -258,7 +272,14 @@ export default function UbicacionesPage() {
                   <h2 className="font-semibold text-slate-700">
                     Posiciones — {seleccionada.nombre}
                   </h2>
-                  <span className="text-xs text-slate-400">{posiciones.length} posiciones</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-slate-400">{posiciones.length} posiciones</span>
+                    {posiciones.length > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-medium">
+                        Ocupación: {tasaOcupacion}%
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -319,19 +340,40 @@ export default function UbicacionesPage() {
                 </div>
               ) : vista === '3d' && seleccionada.diseno_3d_url ? (
                 <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={filtroSku}
-                    onChange={e => setFiltroSku(e.target.value)}
-                    placeholder="Filtrar / resaltar por SKU…"
-                    className="input w-full sm:w-72 text-sm"
-                  />
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      type="text"
+                      value={filtroSku}
+                      onChange={e => setFiltroSku(e.target.value)}
+                      placeholder="Filtrar / resaltar por SKU…"
+                      className="input w-full sm:w-56 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={filtroNombre}
+                      onChange={e => setFiltroNombre(e.target.value)}
+                      placeholder="Filtrar por nombre de producto…"
+                      className="input w-full sm:w-64 text-sm"
+                    />
+                    <select
+                      value={filtroCategoriaId}
+                      onChange={e => setFiltroCategoriaId(e.target.value)}
+                      className="input w-full sm:w-56 text-sm"
+                    >
+                      <option value="">Todas las categorías</option>
+                      {categorias.map(c => (
+                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                   <Visor3D
                     disenoUrl={seleccionada.diseno_3d_url}
                     posiciones={posiciones}
                     stockPorPosicion={stockPorPosicion}
                     detallePorPosicion={detallePorPosicion}
                     filtroSku={filtroSku}
+                    filtroNombre={filtroNombre}
+                    filtroCategoriaId={filtroCategoriaId}
                   />
                   <p className="text-xs text-slate-400">
                     Pasa el mouse sobre una posición para ver su contenido. Los nombres de los objetos del
