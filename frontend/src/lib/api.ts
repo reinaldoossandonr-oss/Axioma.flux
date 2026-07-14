@@ -170,9 +170,17 @@ export const ubicacionesApi = {
   stockPosiciones: (ubicacionId: string) =>
     apiFetch<{ posicion_id: string; stock_total: number }[]>(`/ubicaciones/${ubicacionId}/stock-posiciones`),
   stockPosicionesDetalle: (ubicacionId: string) =>
-    apiFetch<{ posicion_id: string; productos: { producto_id: string; sku: string; nombre: string; stock: number }[] }[]>(
-      `/ubicaciones/${ubicacionId}/stock-posiciones-detalle`
-    ),
+    apiFetch<{
+      posicion_id: string
+      productos: {
+        producto_id: string
+        sku: string
+        nombre: string
+        stock: number
+        categoria_id: string | null
+        categoria_nombre: string | null
+      }[]
+    }[]>(`/ubicaciones/${ubicacionId}/stock-posiciones-detalle`),
 
   /**
    * Sube (o reemplaza) el diseño 3D (glTF/GLB) de una ubicación directamente a
