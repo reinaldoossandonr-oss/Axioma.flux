@@ -129,6 +129,48 @@ async def stock_posiciones_ubicacion(
     return [{"posicion_id": pid, "stock_total": total} for pid, total in totales.items()]
 
 
+@router.get(
+    "/ubicaciones/{ubicacion_id}/stock-posiciones-detalle",
+    summary="Detalle de stock por SKU en cada posición (para el visor 3D)",
+)
+async def stock_posiciones_detalle(
+    ubicacion_id: UUID,
+    user: CurrentUser = Depends(get_current_user),
+):
+    """
+    Devuelve, para cada posición de la ubicación indicada, el desglose de
+    stock por producto (SKU). Se usa en el visor 3D para mostrar qué
+    productos hay al pasar el mouse sobre una posición, y para poder
+    filtrar/resaltar posiciones por SKU.
+    """
+    db = get_user_client(user.token)
+    res = (
+        db.table("v_stock_por_posicion")
+        .select("posicion_id, producto_id, sku, producto_nombre, stock_posicion")
+        .eq("empresa_id", user.empresa_id)
+        .eq("ubicacion_id", str(ubicacion_id))
+        .execute()
+    )
+
+    agrupado: dict[str, list] = {}
+    for row in res.data:
+        stock = row["stock_posicion"] or 0
+        if stock <= 0:
+            continue
+        pid = row["posicion_id"]
+        agrupado.setdefault(pid, []).append({
+            "producto_id": row["producto_id"],
+            "sku": row["sku"],
+            "nombre": row["producto_nombre"],
+            "stock": stock,
+        })
+
+    return [
+        {"posicion_id": pid, "productos": productos}
+        for pid, productos in agrupado.items()
+    ]
+
+
 @router.post(
     "/posiciones",
     response_model=PosicionOut,

@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS ubicaciones (
     tipo        TEXT        NOT NULL DEFAULT 'almacen'
                             CHECK (tipo IN ('almacen','centro_distribucion','tienda','externo')),
     descripcion TEXT,
+    -- Modelo 3D (glTF/GLB) del centro de distribución. Bucket disenos-3d,
+    -- ruta {empresa_id}/{ubicacion_id}.glb. Los nombres de los objetos 3D
+    -- deben coincidir con posiciones.codigo para el emparejamiento automático.
+    diseno_3d_url TEXT,
     activo      BOOLEAN     NOT NULL DEFAULT true,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(empresa_id, codigo)
@@ -1073,9 +1077,53 @@ CREATE POLICY "productos_imagenes_delete"
     AND (storage.foldername(name))[1] = public.get_empresa_id()::text
   );
 
+-- ------------------------------------------------------------
+-- 10.1  Bucket para modelos 3D de centros de distribución
+-- ------------------------------------------------------------
+-- Ruta de cada objeto: {empresa_id}/{ubicacion_id}.glb
+-- Los nombres de los objetos dentro del GLB deben coincidir con
+-- posiciones.codigo para el emparejamiento automático en el visor 3D.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'disenos-3d',
+  'disenos-3d',
+  true,
+  52428800,
+  ARRAY['model/gltf-binary','model/gltf+json','application/octet-stream']
+)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "disenos_3d_select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'disenos-3d');
+
+CREATE POLICY "disenos_3d_insert"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'disenos-3d'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
+
+CREATE POLICY "disenos_3d_update"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'disenos-3d'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
+
+CREATE POLICY "disenos_3d_delete"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'disenos-3d'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
+
 
 -- ============================================================
--- SECCIÓN 10: DATOS DE PRUEBA (descomenta para testing)
+-- SECCIÓN 11: DATOS DE PRUEBA (descomenta para testing)
 -- ============================================================
 /*
 -- Primero crea el usuario en Supabase Auth, luego ejecuta:

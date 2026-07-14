@@ -70,6 +70,7 @@ class UbicacionUpdate(BaseModel):
     nombre: Optional[str] = None
     tipo: Optional[str] = None
     descripcion: Optional[str] = None
+    diseno_3d_url: Optional[str] = None
     activo: Optional[bool] = None
 
 class UbicacionOut(BaseModel):
@@ -79,6 +80,7 @@ class UbicacionOut(BaseModel):
     codigo: str
     tipo: str
     descripcion: Optional[str]
+    diseno_3d_url: Optional[str] = None
     activo: bool
     created_at: datetime
 
