@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS productos (
     -- Costo Promedio Ponderado (CPP) — recalculado en cada ingreso confirmado
     costo_promedio       NUMERIC(14,4) NOT NULL DEFAULT 0,
     stock_minimo         NUMERIC(12,3) NOT NULL DEFAULT 0,
+    -- URL pública de la imagen (bucket productos-imagenes, ruta {empresa_id}/{producto_id}.{ext})
+    imagen_url           TEXT,
     activo               BOOLEAN      NOT NULL DEFAULT true,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -723,13 +725,14 @@ SELECT
       WHEN 'ajuste'  THEN CASE WHEN om.motivo = 'merma' THEN -dm.cantidad ELSE dm.cantidad END
       ELSE 0
     END
-  ), 0)               AS valor_inventario
+  ), 0)               AS valor_inventario,
+  p.imagen_url
 FROM       productos p
 LEFT JOIN  categorias           c  ON p.categoria_id = c.id
 LEFT JOIN  detalle_movimientos  dm ON dm.producto_id = p.id AND dm.empresa_id = p.empresa_id
 LEFT JOIN  ordenes_movimiento   om ON dm.orden_id = om.id AND om.estado = 'confirmado'
 GROUP BY p.empresa_id, p.id, p.sku, p.nombre, c.nombre,
-         p.unidad_medida, p.costo_promedio, p.precio_venta, p.stock_minimo;
+         p.unidad_medida, p.costo_promedio, p.precio_venta, p.stock_minimo, p.imagen_url;
 
 -- ------------------------------------------------------------
 -- 7.2  v_tabla_principal  —  tabla dashboard con reglas de negocio
@@ -1007,6 +1010,52 @@ REVOKE INSERT, UPDATE, DELETE ON auditoria FROM authenticated;
 -- Vistas creadas después del GRANT masivo de la Sección 9 necesitan grant explícito
 GRANT SELECT ON v_dashboard_merma_categoria TO authenticated;
 GRANT SELECT ON v_dashboard_merma_diaria TO authenticated;
+
+
+-- ============================================================
+-- SECCIÓN 10: STORAGE — imágenes de producto
+-- ============================================================
+-- Bucket público (son solo fotos de producto, no datos sensibles).
+-- Ruta de cada objeto: {empresa_id}/{producto_id}.{ext}
+-- Escritura restringida por RLS: cada empresa solo puede subir/editar/borrar
+-- dentro de su propia carpeta.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'productos-imagenes',
+  'productos-imagenes',
+  true,
+  5242880,
+  ARRAY['image/jpeg','image/png','image/webp','image/gif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "productos_imagenes_select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'productos-imagenes');
+
+CREATE POLICY "productos_imagenes_insert"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'productos-imagenes'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
+
+CREATE POLICY "productos_imagenes_update"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'productos-imagenes'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
+
+CREATE POLICY "productos_imagenes_delete"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'productos-imagenes'
+    AND (storage.foldername(name))[1] = public.get_empresa_id()::text
+  );
 
 
 -- ============================================================

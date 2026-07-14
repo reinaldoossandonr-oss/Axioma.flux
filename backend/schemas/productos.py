@@ -29,6 +29,7 @@ class ProductoUpdate(BaseModel):
     unidad_medida: Optional[str] = None
     precio_venta: Optional[float] = None
     stock_minimo: Optional[float] = None
+    imagen_url: Optional[str] = None
     activo: Optional[bool] = None
     # Nota: costo_promedio NO se actualiza directamente; lo maneja el trigger CPP.
 
@@ -45,6 +46,7 @@ class ProductoOut(BaseModel):
     precio_venta: Optional[float]
     costo_promedio: float
     stock_minimo: float
+    imagen_url: Optional[str] = None
     activo: bool
     created_at: datetime
     updated_at: datetime
@@ -70,6 +72,7 @@ class ProductoConStock(BaseModel):
     dias_inventario: Optional[float] = None
     estado: Optional[str] = None
     cantidad_reponer: float = 0.0
+    imagen_url: Optional[str] = None
 
 
 # ── LOTES ────────────────────────────────────────────────────

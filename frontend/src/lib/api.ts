@@ -4,7 +4,7 @@
  * empresa_id es inferida por el backend desde el JWT — nunca se envía en el body.
  */
 
-import { getAccessToken } from './supabase'
+import { getAccessToken, supabase } from './supabase'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -49,6 +49,11 @@ export const dashboardApi = {
   mermaDiaria:      () => apiFetch<any[]>('/dashboard/merma-diaria'),
 }
 
+// Bucket de Supabase Storage para imágenes de producto (público, RLS por empresa)
+const BUCKET_IMAGENES = 'productos-imagenes'
+const MIME_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024 // 5MB, igual que el límite del bucket
+
 // ── PRODUCTOS ────────────────────────────────────────────────
 export const productosApi = {
   listar: (params?: { q?: string; categoria_id?: string; estado?: string; page?: number }) => {
@@ -65,6 +70,56 @@ export const productosApi = {
     apiFetch<any>(`/productos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   eliminar: (id: string) => apiFetch<void>(`/productos/${id}`, { method: 'DELETE' }),
   lotes: (productoId: string) => apiFetch<any[]>(`/productos/${productoId}/lotes`),
+
+  /**
+   * Sube (o reemplaza) la imagen de un producto directamente a Supabase Storage
+   * y persiste la URL resultante en productos.imagen_url vía el backend.
+   * Ruta del objeto: {empresa_id}/{producto_id}.{ext} — la política RLS del
+   * bucket solo permite escribir dentro de la carpeta de la propia empresa.
+   */
+  subirImagen: async (productoId: string, file: File): Promise<string> => {
+    if (!MIME_PERMITIDOS.includes(file.type)) {
+      throw new ApiError(400, 'Formato no permitido. Usa JPG, PNG, WEBP o GIF.')
+    }
+    if (file.size > TAMANO_MAXIMO_BYTES) {
+      throw new ApiError(400, 'La imagen no puede superar los 5MB.')
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError || !userData.user) {
+      throw new ApiError(401, 'No autenticado')
+    }
+
+    const { data: perfil, error: perfilError } = await supabase
+      .from('perfiles_usuarios')
+      .select('empresa_id')
+      .eq('user_id', userData.user.id)
+      .single()
+    if (perfilError || !perfil) {
+      throw new ApiError(401, 'No se pudo determinar la empresa del usuario')
+    }
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `${(perfil as any).empresa_id}/${productoId}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_IMAGENES)
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) {
+      throw new ApiError(400, uploadError.message)
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(BUCKET_IMAGENES)
+      .getPublicUrl(path)
+
+    // Cache-bust para que el navegador no muestre la imagen anterior tras un reemplazo
+    const imagenUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`
+
+    await productosApi.actualizar(productoId, { imagen_url: imagenUrl })
+
+    return imagenUrl
+  },
 }
 
 // ── ÓRDENES ──────────────────────────────────────────────────

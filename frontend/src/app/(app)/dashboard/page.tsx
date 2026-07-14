@@ -139,6 +139,7 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-y border-slate-100">
+                <th className="table-th w-12">Img</th>
                 <th className="table-th">SKU</th>
                 <th className="table-th">Producto</th>
                 <th className="table-th">Categoría</th>
@@ -152,6 +153,22 @@ export default function DashboardPage() {
             <tbody className="divide-y divide-slate-50">
               {tabla.slice(0, 20).map((p: any) => (
                 <tr key={p.producto_id} className="hover:bg-slate-50 transition-colors">
+                  <td className="table-td">
+                    {p.imagen_url ? (
+                      <img
+                        src={p.imagen_url}
+                        alt={p.nombre}
+                        className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </td>
                   <td className="table-td font-mono text-xs text-slate-500">{p.sku}</td>
                   <td className="table-td font-medium">{p.nombre}</td>
                   <td className="table-td text-slate-500">{p.categoria ?? '—'}</td>

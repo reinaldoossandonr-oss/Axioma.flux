@@ -106,7 +106,8 @@ async def tabla_principal(
         .select(
             "producto_id, sku, nombre, categoria, unidad_medida, "
             "costo_promedio, precio_venta, stock_actual, "
-            "consumo_promedio_diario, dias_inventario, estado, cantidad_reponer, valor_inventario"
+            "consumo_promedio_diario, dias_inventario, estado, cantidad_reponer, valor_inventario, "
+            "imagen_url"
         )
         .eq("empresa_id", user.empresa_id)
         .order("nombre")

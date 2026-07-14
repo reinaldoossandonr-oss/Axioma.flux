@@ -71,6 +71,7 @@ export interface Producto {
   precio_venta?: number
   costo_promedio: number
   stock_minimo: number
+  imagen_url?: string
   activo: boolean
 }
 
