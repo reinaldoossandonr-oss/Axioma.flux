@@ -142,7 +142,7 @@ export interface DashboardResumen {
   total_productos: number
   productos_a_reponer: number
   valor_inventario_total: number
-  ordenes_pendientes: number
+  tasa_ocupacion_almacen: number
   merma_valor_total: number
 }
 
