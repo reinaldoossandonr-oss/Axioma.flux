@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ubicacionesApi, posicionesApi } from '@/lib/api'
+import { useEffect, useRef, useState } from 'react'
+import { ubicacionesApi, posicionesApi, ApiError } from '@/lib/api'
+import Visor3D, { ProductoEnPosicion } from '@/components/ubicaciones/Visor3D'
 
 interface Ubicacion {
   id: string
   nombre: string
   tipo?: string
   descripcion?: string
+  diseno_3d_url?: string
   activo: boolean
 }
 
@@ -26,6 +28,7 @@ export default function UbicacionesPage() {
   const [seleccionada, setSeleccionada] = useState<Ubicacion | null>(null)
   const [posiciones, setPosiciones] = useState<Posicion[]>([])
   const [stockPorPosicion, setStockPorPosicion] = useState<Record<string, number>>({})
+  const [detallePorPosicion, setDetallePorPosicion] = useState<Record<string, ProductoEnPosicion[]>>({})
   const [loadingUbic, setLoadingUbic] = useState(true)
   const [loadingPos, setLoadingPos] = useState(false)
   const [formUbic, setFormUbic] = useState({ nombre: '', tipo: 'almacen', descripcion: '' })
@@ -33,10 +36,18 @@ export default function UbicacionesPage() {
   const [errorUbic, setErrorUbic] = useState<string | null>(null)
   const [mostrarFormUbic, setMostrarFormUbic] = useState(false)
 
+  // Visor 3D
+  const [vista, setVista] = useState<'tabla' | '3d'>('tabla')
+  const [subiendoDiseno, setSubiendoDiseno] = useState(false)
+  const [errorDiseno, setErrorDiseno] = useState<string | null>(null)
+  const [filtroSku, setFiltroSku] = useState('')
+  const disenoInputRef = useRef<HTMLInputElement>(null)
+
   async function cargarUbicaciones() {
     try {
       const data = await ubicacionesApi.listar()
       setUbicaciones(data)
+      return data as Ubicacion[]
     } finally {
       setLoadingUbic(false)
     }
@@ -45,13 +56,17 @@ export default function UbicacionesPage() {
   async function cargarPosiciones(ubicId: string) {
     setLoadingPos(true)
     try {
-      const [posicionesData, stockData] = await Promise.all([
+      const [posicionesData, stockData, detalleData] = await Promise.all([
         ubicacionesApi.posiciones(ubicId),
         ubicacionesApi.stockPosiciones(ubicId).catch(() => []),
+        ubicacionesApi.stockPosicionesDetalle(ubicId).catch(() => []),
       ])
       setPosiciones(posicionesData)
       setStockPorPosicion(
         Object.fromEntries(stockData.map(s => [s.posicion_id, s.stock_total]))
+      )
+      setDetallePorPosicion(
+        Object.fromEntries(detalleData.map(d => [d.posicion_id, d.productos]))
       )
     } finally {
       setLoadingPos(false)
@@ -62,7 +77,33 @@ export default function UbicacionesPage() {
 
   function seleccionar(u: Ubicacion) {
     setSeleccionada(u)
+    setVista('tabla')
+    setFiltroSku('')
     cargarPosiciones(u.id)
+  }
+
+  function handleClickSubirDiseno() {
+    setErrorDiseno(null)
+    disenoInputRef.current?.click()
+  }
+
+  async function handleDisenoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !seleccionada) return
+
+    setSubiendoDiseno(true)
+    setErrorDiseno(null)
+    try {
+      const disenoUrl = await ubicacionesApi.subirDiseno3D(seleccionada.id, file)
+      setSeleccionada(prev => (prev ? { ...prev, diseno_3d_url: disenoUrl } : prev))
+      setUbicaciones(prev => prev.map(u => (u.id === seleccionada.id ? { ...u, diseno_3d_url: disenoUrl } : u)))
+      setVista('3d')
+    } catch (err) {
+      setErrorDiseno(err instanceof ApiError ? err.message : 'No se pudo subir el diseño 3D')
+    } finally {
+      setSubiendoDiseno(false)
+    }
   }
 
   async function handleCrearUbicacion(e: React.FormEvent) {
@@ -212,12 +253,61 @@ export default function UbicacionesPage() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-slate-700">
-                  Posiciones — {seleccionada.nombre}
-                </h2>
-                <span className="text-xs text-slate-400">{posiciones.length} posiciones</span>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div>
+                  <h2 className="font-semibold text-slate-700">
+                    Posiciones — {seleccionada.nombre}
+                  </h2>
+                  <span className="text-xs text-slate-400">{posiciones.length} posiciones</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {seleccionada.diseno_3d_url && (
+                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-sm">
+                      <button
+                        onClick={() => setVista('tabla')}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${
+                          vista === 'tabla' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                        }`}
+                      >
+                        Tabla
+                      </button>
+                      <button
+                        onClick={() => setVista('3d')}
+                        className={`px-3 py-1.5 rounded-md transition-colors ${
+                          vista === '3d' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'
+                        }`}
+                      >
+                        Vista 3D
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    ref={disenoInputRef}
+                    type="file"
+                    accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+                    className="hidden"
+                    onChange={handleDisenoFileChange}
+                  />
+                  <button
+                    onClick={handleClickSubirDiseno}
+                    disabled={subiendoDiseno}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {subiendoDiseno
+                      ? 'Subiendo…'
+                      : seleccionada.diseno_3d_url
+                        ? 'Reemplazar diseño 3D'
+                        : 'Subir diseño 3D'}
+                  </button>
+                </div>
               </div>
+
+              {errorDiseno && (
+                <p className="text-red-500 text-sm mb-3">{errorDiseno}</p>
+              )}
+
               {loadingPos ? (
                 <div className="space-y-2 animate-pulse">
                   {[1, 2, 3, 4].map(i => <div key={i} className="h-8 bg-slate-100 rounded" />)}
@@ -226,6 +316,27 @@ export default function UbicacionesPage() {
                 <div className="text-center py-12 text-slate-400">
                   <p className="text-3xl mb-2">📦</p>
                   <p className="text-sm">Esta ubicación no tiene posiciones registradas</p>
+                </div>
+              ) : vista === '3d' && seleccionada.diseno_3d_url ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={filtroSku}
+                    onChange={e => setFiltroSku(e.target.value)}
+                    placeholder="Filtrar / resaltar por SKU…"
+                    className="input w-full sm:w-72 text-sm"
+                  />
+                  <Visor3D
+                    disenoUrl={seleccionada.diseno_3d_url}
+                    posiciones={posiciones}
+                    stockPorPosicion={stockPorPosicion}
+                    detallePorPosicion={detallePorPosicion}
+                    filtroSku={filtroSku}
+                  />
+                  <p className="text-xs text-slate-400">
+                    Pasa el mouse sobre una posición para ver su contenido. Los nombres de los objetos del
+                    modelo 3D deben coincidir con el código de posición (ej: A-1-1) para el emparejamiento automático.
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">

@@ -44,6 +44,7 @@ export interface Ubicacion {
   codigo: string
   tipo: 'almacen' | 'centro_distribucion' | 'tienda' | 'externo'
   descripcion?: string
+  diseno_3d_url?: string
   activo: boolean
 }
 

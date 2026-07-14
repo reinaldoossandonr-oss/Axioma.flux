@@ -1,0 +1,46 @@
+# ============================================================
+# .gitignore — Axioma Flux (raíz del repositorio)
+# ============================================================
+
+# ── Python / Backend ─────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Variables de entorno — NUNCA subir a GitHub
+backend/.env
+.env
+
+# ── Node / Frontend ──────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/.swc/
+
+# Variables de entorno del frontend — NUNCA subir a GitHub
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+frontend/.env.test.local
+
+# ── IDE / OS ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
