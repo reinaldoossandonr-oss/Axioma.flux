@@ -259,7 +259,7 @@ export default function OrdenForm() {
                   <div className="text-right">
                     <span className="text-xs text-slate-400">{p.unidad_medida}</span>
                     <span className="text-sm font-semibold text-primary ml-3">
-                      ${p.costo_promedio?.toFixed(2)}
+                      ${p.costo_promedio?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </button>
@@ -350,7 +350,7 @@ export default function OrdenForm() {
                       </td>
                     )}
                     <td className="table-td text-right font-semibold text-slate-700">
-                      ${(linea.cantidad * linea.costo_unitario).toFixed(2)}
+                      ${(linea.cantidad * linea.costo_unitario).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="table-td">
                       <button
@@ -373,7 +373,7 @@ export default function OrdenForm() {
                     Total orden:
                   </td>
                   <td className="table-td text-right font-bold text-lg text-slate-800">
-                    ${costoTotal.toFixed(2)}
+                    ${costoTotal.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td />
                 </tr>
@@ -447,7 +447,7 @@ export default function OrdenForm() {
               {referencia && <p><span className="text-slate-400">Ref:</span> {referencia}</p>}
               <p><span className="text-slate-400">Productos:</span> {lineas.length}</p>
               <p><span className="text-slate-400">Costo total:</span>{' '}
-                <strong>${costoTotal.toFixed(2)}</strong>
+                <strong>${costoTotal.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               </p>
             </div>
 
