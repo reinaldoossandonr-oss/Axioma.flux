@@ -297,7 +297,7 @@ export default function UbicacionesPage() {
                     <h2 className="font-semibold text-slate-700">
                       Posiciones — {seleccionada.nombre}
                     </h2>
-                    <p className="text-xs text-slate-400">Zona-Rack-Nivel</p>
+                    <p className="text-xs text-slate-500">Zona-Rack-Nivel</p>
                   </div>
 
                   {/* Indicadores grandes: Posiciones, Ocupación, Libres, Ocupadas y Unidades */}
@@ -497,7 +497,7 @@ export default function UbicacionesPage() {
                       filtroRotacion={filtroRotacion}
                     />
                   </div>
-                  <p className="text-xs text-slate-400 flex-shrink-0">
+                  <p className="text-xs text-slate-500 flex-shrink-0">
                     Pasa el mouse sobre una posición para ver su contenido. Las posiciones que no coinciden con un
                     filtro activo se ocultan por completo. Los nombres de los objetos del
                     modelo 3D deben coincidir con el código de posición (ej: A-1-1) para el emparejamiento automático.
