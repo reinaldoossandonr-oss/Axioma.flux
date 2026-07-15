@@ -6,7 +6,7 @@ import { dashboardApi, categoriasApi, RangoFechas } from '@/lib/api'
 import { useEmpresaNombre } from '@/lib/useEmpresa'
 import StatsCards from '@/components/dashboard/StatsCards'
 import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart } from '@/components/dashboard/Charts'
-import { EstadoBadge } from '@/components/ui/Badge'
+import { EstadoBadge, ClasificacionBadge } from '@/components/ui/Badge'
 
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -251,29 +251,31 @@ export default function DashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-y border-slate-100">
-                <th className="table-th w-12">Img</th>
-                <th className="table-th">SKU</th>
-                <th className="table-th">Producto</th>
-                <th className="table-th">Categoría</th>
-                <th className="table-th text-right">Stock</th>
-                <th className="table-th text-right">CPD</th>
-                <th className="table-th text-right">Días inv.</th>
-                <th className="table-th">Estado</th>
-                <th className="table-th text-right">Reponer</th>
+                <th className="table-th text-center w-12">Img</th>
+                <th className="table-th text-center">SKU</th>
+                <th className="table-th text-center">Producto</th>
+                <th className="table-th text-center">Categoría</th>
+                <th className="table-th text-center">Stock</th>
+                <th className="table-th text-center">CPD</th>
+                <th className="table-th text-center">Rotación</th>
+                <th className="table-th text-center">Clasificación</th>
+                <th className="table-th text-center">Días inv.</th>
+                <th className="table-th text-center">Estado</th>
+                <th className="table-th text-center">Reponer</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {tabla.slice(0, 20).map((p: any) => (
                 <tr key={p.producto_id} className="hover:bg-slate-50 transition-colors">
-                  <td className="table-td">
+                  <td className="table-td text-center">
                     {p.imagen_url ? (
                       <img
                         src={p.imagen_url}
                         alt={p.nombre}
-                        className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                        className="w-8 h-8 rounded-lg object-cover border border-slate-200 inline-block"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 mx-auto">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -281,22 +283,28 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </td>
-                  <td className="table-td font-mono text-xs text-slate-500">{p.sku}</td>
-                  <td className="table-td font-medium">{p.nombre}</td>
-                  <td className="table-td text-slate-500">{p.categoria ?? '—'}</td>
-                  <td className="table-td text-right">
+                  <td className="table-td text-center font-mono text-xs text-slate-500">{p.sku}</td>
+                  <td className="table-td text-center font-medium">{p.nombre}</td>
+                  <td className="table-td text-center text-slate-500">{p.categoria ?? '—'}</td>
+                  <td className="table-td text-center">
                     {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </td>
-                  <td className="table-td text-right text-slate-400 text-xs">
+                  <td className="table-td text-center text-slate-400 text-xs">
                     {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="table-td text-right">
+                  <td className="table-td text-center font-medium">
+                    {p.rotacion != null ? p.rotacion.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                  </td>
+                  <td className="table-td text-center">
+                    <ClasificacionBadge clasificacion={p.clasificacion} />
+                  </td>
+                  <td className="table-td text-center">
                     {p.dias_inventario != null ? p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                   </td>
-                  <td className="table-td">
+                  <td className="table-td text-center">
                     <EstadoBadge estado={p.estado} />
                   </td>
-                  <td className="table-td text-right font-medium">
+                  <td className="table-td text-center font-medium">
                     {p.cantidad_reponer > 0 ? p.cantidad_reponer.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                   </td>
                 </tr>
