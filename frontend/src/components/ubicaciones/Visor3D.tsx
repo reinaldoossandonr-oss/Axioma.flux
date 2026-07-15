@@ -41,14 +41,13 @@ interface Visor3DProps {
   onSeleccionarPosicion?: (posicion: PosicionVisor3D) => void
 }
 
-const COLOR_VACIO = '#94a3b8'      // slate-400
-const COLOR_CON_STOCK = '#1AABF0'  // azul de marca
-const COLOR_COINCIDE = '#22c55e'   // verde, coincide filtro (modo Ocupación)
-const COLOR_MATCH_GLOW = '#38BDF8' // sky-400, brillo de coincidencia en modo Rotación (no pisa el color semántico)
+export const COLOR_VACIO = '#94a3b8'      // slate-400
+export const COLOR_CON_STOCK = '#1AABF0'  // azul de marca
+const COLOR_MATCH_GLOW = '#38BDF8' // sky-400, brillo de coincidencia (nunca reemplaza el color semántico)
 const COLOR_HOVER_EMISSIVE = '#1AABF0'
 
 // Mismos tonos que el badge de clasificación en el resto del dashboard.
-const COLOR_ROTACION: Record<string, string> = {
+export const COLOR_ROTACION: Record<string, string> = {
   Alta: '#10B981',       // emerald-500
   Media: '#F59E0B',      // amber-500
   Baja: '#EF4444',       // red-500
@@ -129,7 +128,9 @@ function BinsInteractivos({
 
         const isHover = hoverId === pos.id
 
-        let color = modoColor === 'rotacion'
+        // El color base siempre refleja el modo activo (ocupación o rotación);
+        // los filtros nunca lo reemplazan, solo agregan un brillo para resaltar coincidencias.
+        const color = modoColor === 'rotacion'
           ? (COLOR_ROTACION[clasificacionPos] ?? COLOR_VACIO)
           : (stock > 0 ? COLOR_CON_STOCK : COLOR_VACIO)
         let emissive = '#000000'
@@ -137,15 +138,8 @@ function BinsInteractivos({
         const opacity = 1
 
         if (filtroActivo && coincideFiltro) {
-          if (modoColor === 'ocupacion') {
-            color = COLOR_COINCIDE
-            emissive = COLOR_COINCIDE
-            emissiveIntensity = 0.55
-          } else {
-            // En modo Rotación no pisamos el color (ya es semántico: Alta/Media/Baja).
-            emissive = COLOR_MATCH_GLOW
-            emissiveIntensity = 0.6
-          }
+          emissive = COLOR_MATCH_GLOW
+          emissiveIntensity = 0.6
         }
         if (isHover) {
           emissive = COLOR_HOVER_EMISSIVE
