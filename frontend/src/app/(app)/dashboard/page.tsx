@@ -139,15 +139,15 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Stock por Categoría</h3>
-          <div className="h-52">
+        <div className="card p-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Stock por categoría</h3>
+          <div className="h-40">
             <StockCategoriaChart data={stockCat} />
           </div>
         </div>
-        <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Salidas Mensuales</h3>
-          <div className="h-52">
+        <div className="card p-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Salidas mensuales</h3>
+          <div className="h-40">
             <SalidasMensualesChart data={salidas} />
           </div>
         </div>
@@ -155,15 +155,15 @@ export default function DashboardPage() {
 
       {/* Merma: anillo por categoría + evolución diaria */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Merma en Valor por Categoría</h3>
-          <div className="h-64">
+        <div className="card p-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Merma en valor por categoría</h3>
+          <div className="h-48">
             <MermaCategoriaChart data={mermaCat} />
           </div>
         </div>
-        <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Evolución de la Merma</h3>
-          <div className="h-64">
+        <div className="card p-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Evolución de la merma</h3>
+          <div className="h-48">
             <MermaDiariaChart data={mermaDia} />
           </div>
         </div>
@@ -318,10 +318,10 @@ function LoadingSkeleton() {
         {[1,2,3,4,5].map(i => <div key={i} className="h-24 bg-white rounded-xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        {[1,2].map(i => <div key={i} className="h-52 bg-white rounded-xl" />)}
+        {[1,2].map(i => <div key={i} className="h-40 bg-white rounded-xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        {[1,2].map(i => <div key={i} className="h-64 bg-white rounded-xl" />)}
+        {[1,2].map(i => <div key={i} className="h-48 bg-white rounded-xl" />)}
       </div>
       <div className="h-72 bg-white rounded-xl" />
     </div>
