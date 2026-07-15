@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { dashboardApi, RangoFechas } from '@/lib/api'
+import { dashboardApi, categoriasApi, RangoFechas } from '@/lib/api'
 import { useEmpresaNombre } from '@/lib/useEmpresa'
 import StatsCards from '@/components/dashboard/StatsCards'
 import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart } from '@/components/dashboard/Charts'
@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const defaultRango = rangoPorDefecto()
   const [fechaDesde, setFechaDesde] = useState(defaultRango.desde)
   const [fechaHasta, setFechaHasta] = useState(defaultRango.hasta)
+  const [categoriaId, setCategoriaId] = useState('')
+  const [categorias, setCategorias] = useState<any[]>([])
   const [resumen, setResumen] = useState<any>(null)
   const [stockCat, setStockCat] = useState<any[]>([])
   const [salidas, setSalidas] = useState<any[]>([])
@@ -49,8 +51,16 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    categoriasApi.listar().then(setCategorias).catch(() => setCategorias([]))
+  }, [])
+
+  useEffect(() => {
     async function load() {
-      const rango: RangoFechas = { fecha_desde: fechaDesde, fecha_hasta: fechaHasta }
+      const rango: RangoFechas = {
+        fecha_desde: fechaDesde,
+        fecha_hasta: fechaHasta,
+        categoria_id: categoriaId || undefined,
+      }
       // Promise.allSettled en vez de Promise.all: si UNA llamada falla
       // (ej. un endpoint nuevo, una vista que cambió), las demás igual
       // se muestran en vez de dejar todo el dashboard en blanco.
@@ -86,45 +96,60 @@ export default function DashboardPage() {
     }
     setRefrescando(true)
     load()
-  }, [fechaDesde, fechaHasta])
+  }, [fechaDesde, fechaHasta, categoriaId])
 
   if (loading) return <PageShell empresaNombre={empresaNombre}><LoadingSkeleton /></PageShell>
 
   return (
     <PageShell empresaNombre={empresaNombre}>
-      {/* Filtro de fecha — afecta todos los indicadores, gráficos y tablas de esta página */}
-      <div className="card flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Periodo:</span>
+      {/* Filtro de periodo + categoría — afecta todos los indicadores, gráficos y tablas de esta página */}
+      <div className="card p-2.5 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Periodo:</span>
         <input
           type="date"
           value={fechaDesde}
           max={fechaHasta}
           onChange={e => setFechaDesde(e.target.value)}
-          className="input text-sm py-1.5 w-auto"
+          className="input text-xs py-1 px-2 w-auto"
         />
-        <span className="text-slate-400 text-sm">a</span>
+        <span className="text-slate-400 text-xs">a</span>
         <input
           type="date"
           value={fechaHasta}
           min={fechaDesde}
           max={toISODate(new Date())}
           onChange={e => setFechaHasta(e.target.value)}
-          className="input text-sm py-1.5 w-auto"
+          className="input text-xs py-1 px-2 w-auto"
         />
-        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
-          <button onClick={() => aplicarPreset(30)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+
+        <span className="w-px h-4 bg-slate-200 mx-1" />
+
+        <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Categoría:</span>
+        <select
+          value={categoriaId}
+          onChange={e => setCategoriaId(e.target.value)}
+          className="input text-xs py-1 px-2 w-auto"
+        >
+          <option value="">Todas</option>
+          {categorias.map((c: any) => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-1 ml-auto flex-wrap">
+          <button onClick={() => aplicarPreset(30)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             30 días
           </button>
-          <button onClick={() => aplicarPreset(90)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(90)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             90 días
           </button>
-          <button onClick={() => aplicarPreset(365)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(365)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             Último año
           </button>
-          <button onClick={() => aplicarPreset(null)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(null)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             Todo
           </button>
-          {refrescando && <span className="text-xs text-slate-400 ml-1">Actualizando…</span>}
+          {refrescando && <span className="text-[11px] text-slate-400 ml-1">Actualizando…</span>}
         </div>
       </div>
 
