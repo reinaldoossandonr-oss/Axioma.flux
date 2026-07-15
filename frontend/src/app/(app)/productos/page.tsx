@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { productosApi, categoriasApi } from '@/lib/api'
 import { EstadoBadge } from '@/components/ui/Badge'
+import { useEmpresaNombre } from '@/lib/useEmpresa'
 
 export default function ProductosPage() {
+  const empresaNombre = useEmpresaNombre()
   const [productos, setProductos] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,7 +78,9 @@ export default function ProductosPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-800">Productos</h1>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">
+            Productos{empresaNombre && <span className="text-slate-400 font-medium"> — {empresaNombre}</span>}
+          </h1>
           <p className="text-slate-400 text-sm">{productos.length} productos encontrados</p>
         </div>
         <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
@@ -217,18 +221,18 @@ export default function ProductosPage() {
                     <td className="table-td text-slate-500">{p.categoria ?? '—'}</td>
                     <td className="table-td text-slate-500">{p.unidad_medida}</td>
                     <td className="table-td text-right text-slate-700">
-                      ${p.costo_promedio?.toFixed(2)}
+                      ${p.costo_promedio?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="table-td text-right font-semibold">
-                      {p.stock_actual?.toFixed(1)}
+                      {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     </td>
                     <td className="table-td text-right text-slate-400 text-xs">
-                      {p.consumo_promedio_diario?.toFixed(3)}
+                      {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </td>
                     <td className="table-td text-right">
                       {p.dias_inventario != null ? (
                         <span className={p.dias_inventario < 45 ? 'text-red-500 font-semibold' : 'text-slate-700'}>
-                          {p.dias_inventario.toFixed(0)}d
+                          {p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 })}d
                         </span>
                       ) : '—'}
                     </td>
@@ -236,7 +240,7 @@ export default function ProductosPage() {
                       <EstadoBadge estado={p.estado} />
                     </td>
                     <td className="table-td text-right font-medium text-red-600">
-                      {p.cantidad_reponer > 0 ? p.cantidad_reponer.toFixed(0) : '—'}
+                      {p.cantidad_reponer > 0 ? p.cantidad_reponer.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                     </td>
                   </tr>
                 ))
