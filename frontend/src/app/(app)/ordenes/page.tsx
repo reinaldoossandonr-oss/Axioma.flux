@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ordenesApi } from '@/lib/api'
 import { EstadoBadge, TipoBadge } from '@/components/ui/Badge'
+import { useEmpresaNombre } from '@/lib/useEmpresa'
 
 export default function OrdenesPage() {
+  const empresaNombre = useEmpresaNombre()
   const [ordenes, setOrdenes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [tipoFiltro, setTipoFiltro] = useState('')
@@ -30,7 +32,9 @@ export default function OrdenesPage() {
     <div className="p-4 md:p-6 space-y-4 md:space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-800">Órdenes de movimiento</h1>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">
+            Órdenes de movimiento{empresaNombre && <span className="text-slate-400 font-medium"> — {empresaNombre}</span>}
+          </h1>
           <p className="text-slate-400 text-sm">{ordenes.length} órdenes encontradas</p>
         </div>
         <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
@@ -71,7 +75,7 @@ export default function OrdenesPage() {
                 <th className="table-th">Referencia</th>
                 <th className="table-th">Estado</th>
                 <th className="table-th text-right">Costo total</th>
-                <th className="table-th"></th>
+                <th className="table-th text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
