@@ -134,7 +134,7 @@ export default function Sidebar({ open = false, onClose }: SidebarProps) {
             <p className="text-white text-xs font-semibold leading-tight truncate">
               {perfil?.nombre ?? '—'}
             </p>
-            <p className="text-slate-500 text-[10px] leading-tight truncate mt-0.5">
+            <p className="text-slate-400 text-xs leading-tight truncate mt-0.5">
               {perfil?.email ?? ''}
             </p>
           </div>
