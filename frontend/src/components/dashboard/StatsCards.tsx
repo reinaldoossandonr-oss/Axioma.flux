@@ -73,7 +73,7 @@ export default function StatsCards({ resumen }: Props) {
             <p className="text-2xl font-bold text-slate-800 truncate">{stat.value}</p>
             <p className="text-sm text-slate-500 leading-tight">{stat.label}</p>
             {stat.subtitle && (
-              <p className="text-xs text-slate-400 mt-0.5">{stat.subtitle}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{stat.subtitle}</p>
             )}
           </div>
         </div>
