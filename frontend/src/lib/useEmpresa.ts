@@ -3,10 +3,22 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
-// Cache a nivel de módulo: la empresa del usuario no cambia durante la sesión,
-// así que solo se consulta una vez sin importar cuántas páginas usen el hook.
-let cachedNombre: string | null = null
-let pending: Promise<string | null> | null = null
+// Cache a nivel de módulo, ligada al user_id actual — así no queda "pegado"
+// el nombre de una empresa anterior si en la misma pestaña se cambia de
+// cuenta (login/logout) sin recargar la página.
+let cache: { userId: string; nombre: string | null } | null = null
+let pendingKey: string | null = null
+let pendingPromise: Promise<string | null> | null = null
+
+// Invalida la caché apenas cambia la sesión (login, logout, cambio de usuario).
+supabase.auth.onAuthStateChange((_event, session) => {
+  const uid = session?.user?.id ?? null
+  if (!uid || (cache && cache.userId !== uid)) {
+    cache = null
+    pendingKey = null
+    pendingPromise = null
+  }
+})
 
 async function fetchEmpresaNombre(): Promise<string | null> {
   const { data, error } = await supabase.from('empresas').select('nombre').single()
@@ -16,21 +28,41 @@ async function fetchEmpresaNombre(): Promise<string | null> {
 
 /**
  * Devuelve el nombre de la empresa del usuario autenticado (vía RLS:
- * "empresas_ver_propia"). Retorna null mientras carga o si falla.
+ * "empresas_ver_propia"). Retorna null mientras carga, si falla, o si
+ * no hay sesión activa.
  */
 export function useEmpresaNombre(): string | null {
-  const [nombre, setNombre] = useState<string | null>(cachedNombre)
+  const [nombre, setNombre] = useState<string | null>(null)
 
   useEffect(() => {
-    if (cachedNombre) {
-      setNombre(cachedNombre)
-      return
-    }
-    if (!pending) pending = fetchEmpresaNombre()
-    pending.then(n => {
-      cachedNombre = n
+    let cancelled = false
+
+    async function run() {
+      const { data: { user } } = await supabase.auth.getUser()
+      const uid = user?.id ?? null
+      if (!uid) {
+        if (!cancelled) setNombre(null)
+        return
+      }
+
+      if (cache && cache.userId === uid) {
+        if (!cancelled) setNombre(cache.nombre)
+        return
+      }
+
+      if (!pendingPromise || pendingKey !== uid) {
+        pendingKey = uid
+        pendingPromise = fetchEmpresaNombre()
+      }
+
+      const n = await pendingPromise
+      if (cancelled) return
+      cache = { userId: uid, nombre: n }
       setNombre(n)
-    })
+    }
+
+    run()
+    return () => { cancelled = true }
   }, [])
 
   return nombre
