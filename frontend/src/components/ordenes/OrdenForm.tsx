@@ -253,11 +253,11 @@ export default function OrdenForm() {
                   onMouseDown={() => agregarProducto(p)}
                 >
                   <div>
-                    <span className="font-mono text-xs text-slate-400 mr-2">{p.sku}</span>
+                    <span className="font-mono text-xs text-slate-500 mr-2">{p.sku}</span>
                     <span className="text-sm font-medium text-slate-800">{p.nombre}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-slate-400">{p.unidad_medida}</span>
+                    <span className="text-xs text-slate-500">{p.unidad_medida}</span>
                     <span className="text-sm font-semibold text-primary ml-3">
                       ${p.costo_promedio?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
@@ -292,10 +292,10 @@ export default function OrdenForm() {
               <tbody className="divide-y divide-slate-50">
                 {lineas.map(linea => (
                   <tr key={linea.uid} className={linea.error ? 'bg-red-50' : 'hover:bg-slate-50'}>
-                    <td className="table-td font-mono text-xs text-slate-400">{linea.sku}</td>
+                    <td className="table-td font-mono text-xs text-slate-500">{linea.sku}</td>
                     <td className="table-td">
                       <p className="font-medium text-slate-800">{linea.nombre}</p>
-                      <p className="text-xs text-slate-400">{linea.unidad_medida}</p>
+                      <p className="text-xs text-slate-500">{linea.unidad_medida}</p>
                       {linea.error && <p className="text-xs text-red-500 mt-0.5">{linea.error}</p>}
                     </td>
                     <td className="table-td">
