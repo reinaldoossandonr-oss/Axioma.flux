@@ -104,31 +104,31 @@ export default function DashboardPage() {
     <PageShell empresaNombre={empresaNombre}>
       {/* Filtro de periodo + categoría — afecta todos los indicadores, gráficos y tablas de esta página */}
       <div className="card p-2.5 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Periodo:</span>
+        <span className="text-sm font-medium text-slate-500 whitespace-nowrap">Periodo:</span>
         <input
           type="date"
           value={fechaDesde}
           max={fechaHasta}
           onChange={e => setFechaDesde(e.target.value)}
-          className="input text-xs py-1 px-2 w-auto"
+          className="input text-sm py-1 px-2 w-auto"
         />
-        <span className="text-slate-400 text-xs">a</span>
+        <span className="text-slate-500 text-sm">a</span>
         <input
           type="date"
           value={fechaHasta}
           min={fechaDesde}
           max={toISODate(new Date())}
           onChange={e => setFechaHasta(e.target.value)}
-          className="input text-xs py-1 px-2 w-auto"
+          className="input text-sm py-1 px-2 w-auto"
         />
 
         <span className="w-px h-4 bg-slate-200 mx-1" />
 
-        <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Categoría:</span>
+        <span className="text-sm font-medium text-slate-500 whitespace-nowrap">Categoría:</span>
         <select
           value={categoriaId}
           onChange={e => setCategoriaId(e.target.value)}
-          className="input text-xs py-1 px-2 w-auto"
+          className="input text-sm py-1 px-2 w-auto"
         >
           <option value="">Todas</option>
           {categorias.map((c: any) => (
@@ -137,19 +137,19 @@ export default function DashboardPage() {
         </select>
 
         <div className="flex items-center gap-1 ml-auto flex-wrap">
-          <button onClick={() => aplicarPreset(30)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(30)} className="px-2 py-1 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             30 días
           </button>
-          <button onClick={() => aplicarPreset(90)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(90)} className="px-2 py-1 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             90 días
           </button>
-          <button onClick={() => aplicarPreset(365)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(365)} className="px-2 py-1 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             Último año
           </button>
-          <button onClick={() => aplicarPreset(null)} className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+          <button onClick={() => aplicarPreset(null)} className="px-2 py-1 rounded-lg text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
             Todo
           </button>
-          {refrescando && <span className="text-[11px] text-slate-400 ml-1">Actualizando…</span>}
+          {refrescando && <span className="text-xs text-slate-500 ml-1">Actualizando…</span>}
         </div>
       </div>
 
@@ -295,7 +295,7 @@ export default function DashboardPage() {
                   <td className="table-td text-center">
                     {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                   </td>
-                  <td className="table-td text-center text-slate-400 text-xs">
+                  <td className="table-td text-center text-slate-500 text-xs">
                     {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="table-td text-center font-medium">
@@ -366,3 +366,4 @@ function LoadingSkeleton() {
     </div>
   )
 }
+                    
