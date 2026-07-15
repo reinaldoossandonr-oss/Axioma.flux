@@ -41,6 +41,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 export interface RangoFechas {
   fecha_desde?: string // YYYY-MM-DD
   fecha_hasta?: string // YYYY-MM-DD
+  categoria_id?: string
 }
 
 function qsRango(rango?: RangoFechas): string {
@@ -48,6 +49,7 @@ function qsRango(rango?: RangoFechas): string {
   const params = new URLSearchParams()
   if (rango.fecha_desde) params.set('fecha_desde', rango.fecha_desde)
   if (rango.fecha_hasta) params.set('fecha_hasta', rango.fecha_hasta)
+  if (rango.categoria_id) params.set('categoria_id', rango.categoria_id)
   const qs = params.toString()
   return qs ? `?${qs}` : ''
 }
