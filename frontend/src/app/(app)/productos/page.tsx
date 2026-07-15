@@ -226,7 +226,7 @@ export default function ProductosPage() {
                     <td className="table-td text-center font-semibold">
                       {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     </td>
-                    <td className="table-td text-center text-slate-400 text-xs">
+                    <td className="table-td text-center text-slate-500 text-xs">
                       {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </td>
                     <td className="table-td text-center">
