@@ -48,12 +48,16 @@ def _resolver_rango(fecha_desde: Optional[str], fecha_hasta: Optional[str]) -> t
 async def resumen(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
     """
     Métricas clave para las tarjetas del dashboard, calculadas "a la fecha"
     (fecha_hasta) y acotadas por el rango [fecha_desde, fecha_hasta] cuando
-    corresponde (merma, consumo promedio).
+    corresponde (merma, consumo promedio). Si se envía categoria_id, todas
+    las métricas quedan acotadas a esa categoría, excepto la tasa de
+    ocupación del almacén (es una métrica física del centro de distribución,
+    no tiene sentido acotarla a una sola categoría de producto).
     """
     db = get_user_client(user.token)
     desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
@@ -62,6 +66,8 @@ async def resumen(
         "f_stock_actual_asof",
         {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
     ).execute().data or []
+    if categoria_id:
+        stock_res = [r for r in stock_res if r.get("categoria_id") == categoria_id]
 
     total_productos = len(stock_res)
     a_reponer = sum(1 for r in stock_res if r.get("estado") == "Reponer")
@@ -71,6 +77,8 @@ async def resumen(
         "f_merma_categoria_asof",
         {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
     ).execute().data or []
+    if categoria_id:
+        merma_res = [r for r in merma_res if r.get("categoria_id") == categoria_id]
     merma_valor_total = sum((r.get("valor_total") or 0) for r in merma_res)
 
     # Tasa de ocupación del almacén "a la fecha"
@@ -105,6 +113,7 @@ async def resumen(
 async def stock_por_categoria(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
     """Agrupa f_stock_actual_asof por categoría, "a la fecha" (fecha_hasta)."""
@@ -115,6 +124,8 @@ async def stock_por_categoria(
         "f_stock_actual_asof",
         {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
     ).execute().data or []
+    if categoria_id:
+        rows = [r for r in rows if r.get("categoria_id") == categoria_id]
 
     agrupado: dict[str, dict] = {}
     for r in rows:
@@ -131,14 +142,15 @@ async def stock_por_categoria(
 async def salidas_mensuales(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Salidas confirmadas acotadas a [fecha_desde, fecha_hasta], agrupadas por mes."""
+    """Salidas confirmadas acotadas a [fecha_desde, fecha_hasta] y, si se envía, a una categoría, agrupadas por mes."""
     db = get_user_client(user.token)
     desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
     return db.rpc(
         "f_salidas_mensuales_asof",
-        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta, "p_categoria_id": categoria_id},
     ).execute().data or []
 
 
@@ -146,6 +158,7 @@ async def salidas_mensuales(
 async def tabla_principal(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
     """
@@ -159,6 +172,8 @@ async def tabla_principal(
         "f_stock_actual_asof",
         {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
     ).execute().data or []
+    if categoria_id:
+        rows = [r for r in rows if r.get("categoria_id") == categoria_id]
     return sorted(rows, key=lambda r: (r.get("nombre") or ""))
 
 
@@ -166,6 +181,7 @@ async def tabla_principal(
 async def alertas_reposicion(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
     """Lista rápida de productos con estado 'Reponer' (a la fecha) para notificaciones."""
@@ -175,6 +191,8 @@ async def alertas_reposicion(
         "f_stock_actual_asof",
         {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
     ).execute().data or []
+    if categoria_id:
+        rows = [r for r in rows if r.get("categoria_id") == categoria_id]
     reponer = [r for r in rows if r.get("estado") == "Reponer"]
     reponer.sort(key=lambda r: (r.get("dias_inventario") if r.get("dias_inventario") is not None else 0))
     return reponer
@@ -184,29 +202,34 @@ async def alertas_reposicion(
 async def merma_por_categoria(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Merma confirmada (tipo='ajuste', motivo='merma') acotada a [fecha_desde, fecha_hasta]."""
+    """Merma confirmada (tipo='ajuste', motivo='merma') acotada a [fecha_desde, fecha_hasta] y, si se envía, a una categoría."""
     db = get_user_client(user.token)
     desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
-    return db.rpc(
+    rows = db.rpc(
         "f_merma_categoria_asof",
         {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
     ).execute().data or []
+    if categoria_id:
+        rows = [r for r in rows if r.get("categoria_id") == categoria_id]
+    return rows
 
 
 @router.get("/merma-diaria", summary="Evolución diaria de la merma")
 async def merma_diaria(
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
+    categoria_id: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Evolución diaria de la merma acotada a [fecha_desde, fecha_hasta]."""
+    """Evolución diaria de la merma acotada a [fecha_desde, fecha_hasta] y, si se envía, a una categoría."""
     db = get_user_client(user.token)
     desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
     return db.rpc(
         "f_merma_diaria_asof",
-        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta, "p_categoria_id": categoria_id},
     ).execute().data or []
 
 
