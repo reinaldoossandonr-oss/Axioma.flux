@@ -2,12 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { dashboardApi } from '@/lib/api'
+import { dashboardApi, RangoFechas } from '@/lib/api'
+import { useEmpresaNombre } from '@/lib/useEmpresa'
 import StatsCards from '@/components/dashboard/StatsCards'
 import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart } from '@/components/dashboard/Charts'
 import { EstadoBadge } from '@/components/ui/Badge'
 
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function rangoPorDefecto(): { desde: string; hasta: string } {
+  const hasta = new Date()
+  const desde = new Date()
+  desde.setDate(desde.getDate() - 90)
+  return { desde: toISODate(desde), hasta: toISODate(hasta) }
+}
+
 export default function DashboardPage() {
+  const empresaNombre = useEmpresaNombre()
+  const defaultRango = rangoPorDefecto()
+  const [fechaDesde, setFechaDesde] = useState(defaultRango.desde)
+  const [fechaHasta, setFechaHasta] = useState(defaultRango.hasta)
   const [resumen, setResumen] = useState<any>(null)
   const [stockCat, setStockCat] = useState<any[]>([])
   const [salidas, setSalidas] = useState<any[]>([])
@@ -16,21 +32,36 @@ export default function DashboardPage() {
   const [mermaCat, setMermaCat] = useState<any[]>([])
   const [mermaDia, setMermaDia] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refrescando, setRefrescando] = useState(false)
   const [errorCarga, setErrorCarga] = useState<string | null>(null)
+
+  function aplicarPreset(dias: number | null) {
+    const hasta = new Date()
+    if (dias === null) {
+      // "Todo": desde el inicio de operación de la empresa
+      setFechaDesde('2000-01-01')
+    } else {
+      const desde = new Date()
+      desde.setDate(desde.getDate() - dias)
+      setFechaDesde(toISODate(desde))
+    }
+    setFechaHasta(toISODate(hasta))
+  }
 
   useEffect(() => {
     async function load() {
+      const rango: RangoFechas = { fecha_desde: fechaDesde, fecha_hasta: fechaHasta }
       // Promise.allSettled en vez de Promise.all: si UNA llamada falla
       // (ej. un endpoint nuevo, una vista que cambió), las demás igual
       // se muestran en vez de dejar todo el dashboard en blanco.
       const [r, sc, sl, t, al, mc, md] = await Promise.allSettled([
-        dashboardApi.resumen(),
-        dashboardApi.stockCategorias(),
-        dashboardApi.salidasMensuales(),
-        dashboardApi.tablaPrincipal(),
-        dashboardApi.alertas(),
-        dashboardApi.mermaCategorias(),
-        dashboardApi.mermaDiaria(),
+        dashboardApi.resumen(rango),
+        dashboardApi.stockCategorias(rango),
+        dashboardApi.salidasMensuales(rango),
+        dashboardApi.tablaPrincipal(rango),
+        dashboardApi.alertas(rango),
+        dashboardApi.mermaCategorias(rango),
+        dashboardApi.mermaDiaria(rango),
       ])
 
       const fallidas: string[] = []
@@ -51,14 +82,52 @@ export default function DashboardPage() {
       }
 
       setLoading(false)
+      setRefrescando(false)
     }
+    setRefrescando(true)
     load()
-  }, [])
+  }, [fechaDesde, fechaHasta])
 
-  if (loading) return <PageShell><LoadingSkeleton /></PageShell>
+  if (loading) return <PageShell empresaNombre={empresaNombre}><LoadingSkeleton /></PageShell>
 
   return (
-    <PageShell>
+    <PageShell empresaNombre={empresaNombre}>
+      {/* Filtro de fecha — afecta todos los indicadores, gráficos y tablas de esta página */}
+      <div className="card flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Periodo:</span>
+        <input
+          type="date"
+          value={fechaDesde}
+          max={fechaHasta}
+          onChange={e => setFechaDesde(e.target.value)}
+          className="input text-sm py-1.5 w-auto"
+        />
+        <span className="text-slate-400 text-sm">a</span>
+        <input
+          type="date"
+          value={fechaHasta}
+          min={fechaDesde}
+          max={toISODate(new Date())}
+          onChange={e => setFechaHasta(e.target.value)}
+          className="input text-sm py-1.5 w-auto"
+        />
+        <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+          <button onClick={() => aplicarPreset(30)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+            30 días
+          </button>
+          <button onClick={() => aplicarPreset(90)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+            90 días
+          </button>
+          <button onClick={() => aplicarPreset(365)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+            Último año
+          </button>
+          <button onClick={() => aplicarPreset(null)} className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors">
+            Todo
+          </button>
+          {refrescando && <span className="text-xs text-slate-400 ml-1">Actualizando…</span>}
+        </div>
+      </div>
+
       {errorCarga && (
         <div className="bg-amber-50 text-amber-700 text-sm rounded-xl px-5 py-3 border border-amber-200">
           {errorCarga}
@@ -77,7 +146,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Salidas Mensuales (12 meses)</h3>
+          <h3 className="font-semibold text-slate-700 mb-4">Salidas Mensuales</h3>
           <div className="h-52">
             <SalidasMensualesChart data={salidas} />
           </div>
@@ -93,7 +162,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="card">
-          <h3 className="font-semibold text-slate-700 mb-4">Evolución de la Merma (90 días)</h3>
+          <h3 className="font-semibold text-slate-700 mb-4">Evolución de la Merma</h3>
           <div className="h-64">
             <MermaDiariaChart data={mermaDia} />
           </div>
@@ -128,12 +197,14 @@ export default function DashboardPage() {
                   <tr key={p.producto_id} className="hover:bg-slate-50">
                     <td className="table-td font-mono text-xs">{p.sku}</td>
                     <td className="table-td">{p.nombre}</td>
-                    <td className="table-td text-right">{p.stock_actual?.toFixed(1)}</td>
+                    <td className="table-td text-right">
+                      {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                    </td>
                     <td className="table-td text-right text-red-500 font-medium">
-                      {p.dias_inventario != null ? `${p.dias_inventario.toFixed(0)}d` : '—'}
+                      {p.dias_inventario != null ? `${p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 })}d` : '—'}
                     </td>
                     <td className="table-td text-right font-semibold text-red-600">
-                      {p.cantidad_reponer?.toFixed(0)}
+                      {p.cantidad_reponer?.toLocaleString('es-CL', { maximumFractionDigits: 0 })}
                     </td>
                   </tr>
                 ))}
@@ -188,18 +259,20 @@ export default function DashboardPage() {
                   <td className="table-td font-mono text-xs text-slate-500">{p.sku}</td>
                   <td className="table-td font-medium">{p.nombre}</td>
                   <td className="table-td text-slate-500">{p.categoria ?? '—'}</td>
-                  <td className="table-td text-right">{p.stock_actual?.toFixed(1)}</td>
+                  <td className="table-td text-right">
+                    {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                  </td>
                   <td className="table-td text-right text-slate-400 text-xs">
-                    {p.consumo_promedio_diario?.toFixed(2)}
+                    {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="table-td text-right">
-                    {p.dias_inventario != null ? p.dias_inventario.toFixed(0) : '—'}
+                    {p.dias_inventario != null ? p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                   </td>
                   <td className="table-td">
                     <EstadoBadge estado={p.estado} />
                   </td>
                   <td className="table-td text-right font-medium">
-                    {p.cantidad_reponer > 0 ? p.cantidad_reponer.toFixed(0) : '—'}
+                    {p.cantidad_reponer > 0 ? p.cantidad_reponer.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                   </td>
                 </tr>
               ))}
@@ -217,12 +290,14 @@ export default function DashboardPage() {
   )
 }
 
-function PageShell({ children }: { children: React.ReactNode }) {
+function PageShell({ children, empresaNombre }: { children: React.ReactNode; empresaNombre?: string | null }) {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-800">Dashboard</h1>
+          <h1 className="text-lg md:text-xl font-bold text-slate-800">
+            Dashboard{empresaNombre && <span className="text-slate-400 font-medium"> — {empresaNombre}</span>}
+          </h1>
           <p className="text-slate-400 text-sm hidden sm:block">Resumen de inventario en tiempo real</p>
         </div>
         <Link href="/ordenes/nueva" className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap">
