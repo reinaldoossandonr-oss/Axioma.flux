@@ -171,7 +171,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Salidas mensuales</h3>
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Salidas de inventario</h3>
           <div className="h-40">
             <SalidasMensualesChart data={salidas} />
           </div>
@@ -353,8 +353,8 @@ function PageShell({ children, empresaNombre }: { children: React.ReactNode; emp
 function LoadingSkeleton() {
   return (
     <div className="space-y-4 md:space-y-5 animate-pulse">
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 md:gap-4">
-        {[1,2,3,4,5].map(i => <div key={i} className="h-24 bg-white rounded-xl" />)}
+      <div className="grid grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-3 md:gap-4">
+        {[1,2,3,4,5,6,7].map(i => <div key={i} className="h-24 bg-white rounded-xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         {[1,2].map(i => <div key={i} className="h-40 bg-white rounded-xl" />)}
