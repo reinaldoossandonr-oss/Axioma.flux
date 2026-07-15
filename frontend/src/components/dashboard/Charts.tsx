@@ -12,17 +12,34 @@ ChartJS.register(
   PointElement, Title, Tooltip, Legend, ArcElement, Filler
 )
 
-const PRIMARY = '#1AABF0'
-const PRIMARY_LIGHT = 'rgba(26,171,240,0.15)'
+// Tipografía y tono neutro consistentes en todos los gráficos
+ChartJS.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif"
+ChartJS.defaults.font.size = 11
+ChartJS.defaults.color = '#64748B'
+
+const PRIMARY = '#0E87BF'
+const PRIMARY_LIGHT = 'rgba(14,135,191,0.10)'
+// Paleta corporativa: un tono por familia de color, misma saturación/luminosidad
+// para que cada categoría se distinga de un vistazo (evita azules/celestes similares).
 const PALETTE = [
-  '#1AABF0', '#10B981', '#F59E0B', '#8B5CF6',
-  '#EF4444', '#06B6D4', '#84CC16', '#F97316',
+  '#2563EB', '#0D9488', '#B45309', '#7C3AED',
+  '#0891B2', '#BE185D', '#4D7C0F', '#C2410C',
 ]
-// Paleta en tonos rojo/rosa para resaltar que representa pérdida (merma)
+// Paleta en tonos rojo/naranja para resaltar que representa pérdida (merma),
+// con más contraste de matiz y luminosidad entre valores para distinguirlas mejor.
 const PALETTE_MERMA = [
-  '#E11D48', '#F43F5E', '#FB7185', '#BE123C',
-  '#9F1239', '#FDA4AF', '#881337', '#F87171',
+  '#9F1239', '#DC2626', '#EA580C', '#BE185D',
+  '#7C2D12', '#FB7185', '#C2410C', '#FDA4AF',
 ]
+const TOOLTIP_BASE = {
+  backgroundColor: '#0F172A',
+  padding: 10,
+  cornerRadius: 6,
+  displayColors: true,
+  boxPadding: 4,
+  titleFont: { size: 12, weight: 500 as const },
+  bodyFont: { size: 12 },
+}
 
 // ── GRÁFICO 1: Stock por categoría (barras) ──────────────────
 interface StockCategoriaProps {
@@ -39,8 +56,9 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
         label: 'Stock total (unidades)',
         data: data.map(d => d.stock_total ?? 0),
         backgroundColor: PALETTE.slice(0, data.length),
-        borderRadius: 6,
+        borderRadius: 3,
         borderSkipped: false,
+        maxBarThickness: 36,
       },
     ],
   }
@@ -54,14 +72,15 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...TOOLTIP_BASE,
             callbacks: {
               label: ctx => ` ${(ctx.parsed.y ?? 0).toLocaleString('es-CL')} unidades`,
             },
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10.5 } } },
         },
       }}
     />
@@ -89,11 +108,14 @@ export function SalidasMensualesChart({ data }: SalidasProps) {
         data: data.map(d => d.costo_total ?? 0),
         borderColor: PRIMARY,
         backgroundColor: PRIMARY_LIGHT,
-        borderWidth: 2,
+        borderWidth: 1.5,
         fill: true,
-        tension: 0.4,
-        pointBackgroundColor: PRIMARY,
-        pointRadius: 4,
+        tension: 0.35,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: PRIMARY,
+        pointBorderWidth: 1.5,
+        pointRadius: 2.5,
+        pointHoverRadius: 4,
       },
     ],
   }
@@ -107,6 +129,7 @@ export function SalidasMensualesChart({ data }: SalidasProps) {
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...TOOLTIP_BASE,
             callbacks: {
               label: ctx =>
                 ` $${(ctx.parsed.y ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
@@ -114,11 +137,12 @@ export function SalidasMensualesChart({ data }: SalidasProps) {
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
           y: {
             grid: { color: '#F1F5F9' },
             ticks: {
-              font: { size: 11 },
+              font: { size: 10.5 },
+              maxTicksLimit: 5,
               callback: v => `$${Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
             },
           },
@@ -141,8 +165,9 @@ export function ValorCategoriaChart({ data }: ValorCategoriaProps) {
     datasets: [{
       data: data.map(d => d.valor_total ?? 0),
       backgroundColor: PALETTE.slice(0, data.length),
-      borderWidth: 0,
-      hoverOffset: 8,
+      borderWidth: 2,
+      borderColor: '#ffffff',
+      hoverOffset: 6,
     }],
   }
 
@@ -152,13 +177,22 @@ export function ValorCategoriaChart({ data }: ValorCategoriaProps) {
       options={{
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '70%',
+        cutout: '72%',
         plugins: {
           legend: {
             position: 'right',
-            labels: { font: { size: 11 }, padding: 12 },
+            labels: {
+              font: { size: 10.5 },
+              color: '#475569',
+              padding: 10,
+              boxWidth: 8,
+              boxHeight: 8,
+              usePointStyle: true,
+              pointStyle: 'circle',
+            },
           },
           tooltip: {
+            ...TOOLTIP_BASE,
             callbacks: {
               label: ctx =>
                 ` $${ctx.parsed.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
@@ -191,11 +225,11 @@ const centerTextPlugin = {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillStyle = '#0F172A'
-    ctx.font = '700 20px system-ui, -apple-system, sans-serif'
+    ctx.font = "600 18px 'Inter', system-ui, -apple-system, sans-serif"
     ctx.fillText(`$${total.toLocaleString('es-CL', { maximumFractionDigits: 0, notation: 'compact' })}`, cx, cy - 8)
     ctx.fillStyle = '#94A3B8'
-    ctx.font = '500 11px system-ui, -apple-system, sans-serif'
-    ctx.fillText('Merma total', cx, cy + 14)
+    ctx.font = "500 10px 'Inter', system-ui, -apple-system, sans-serif"
+    ctx.fillText('Merma total', cx, cy + 12)
     ctx.restore()
   },
 }
@@ -208,9 +242,9 @@ export function MermaCategoriaChart({ data }: MermaCategoriaProps) {
     datasets: [{
       data: data.map(d => d.valor_total ?? 0),
       backgroundColor: PALETTE_MERMA.slice(0, data.length),
-      borderWidth: 3,
+      borderWidth: 2,
       borderColor: '#ffffff',
-      hoverOffset: 10,
+      hoverOffset: 8,
       hoverBorderWidth: 0,
     }],
   }
@@ -222,19 +256,23 @@ export function MermaCategoriaChart({ data }: MermaCategoriaProps) {
       options={{
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '72%',
+        cutout: '74%',
         animation: { animateRotate: true, animateScale: true },
         plugins: {
           legend: {
             position: 'right',
             labels: {
-              font: { size: 11 },
-              padding: 14,
+              font: { size: 10.5 },
+              color: '#475569',
+              padding: 10,
+              boxWidth: 8,
+              boxHeight: 8,
               usePointStyle: true,
               pointStyle: 'circle',
             },
           },
           tooltip: {
+            ...TOOLTIP_BASE,
             callbacks: {
               label: ctx =>
                 ` $${ctx.parsed.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
@@ -265,16 +303,16 @@ export function MermaDiariaChart({ data }: MermaDiariaProps) {
       {
         label: 'Merma en valor ($)',
         data: data.map(d => d.valor_total ?? 0),
-        borderColor: '#E11D48',
-        backgroundColor: 'rgba(225,29,72,0.12)',
-        borderWidth: 2,
+        borderColor: '#9F1239',
+        backgroundColor: 'rgba(159,18,57,0.08)',
+        borderWidth: 1.5,
         fill: true,
-        tension: 0.35,
+        tension: 0.3,
         pointRadius: 0,
-        pointHoverRadius: 5,
-        pointHoverBackgroundColor: '#E11D48',
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: '#9F1239',
         pointHoverBorderColor: '#ffffff',
-        pointHoverBorderWidth: 2,
+        pointHoverBorderWidth: 1.5,
       },
     ],
   }
@@ -289,6 +327,7 @@ export function MermaDiariaChart({ data }: MermaDiariaProps) {
         plugins: {
           legend: { display: false },
           tooltip: {
+            ...TOOLTIP_BASE,
             callbacks: {
               label: ctx =>
                 ` $${(ctx.parsed.y ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
@@ -298,12 +337,13 @@ export function MermaDiariaChart({ data }: MermaDiariaProps) {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { font: { size: 10 }, maxTicksLimit: 10, autoSkip: true },
+            ticks: { font: { size: 10 }, maxTicksLimit: 8, autoSkip: true },
           },
           y: {
             grid: { color: '#F1F5F9' },
             ticks: {
-              font: { size: 11 },
+              font: { size: 10.5 },
+              maxTicksLimit: 5,
               callback: v => `$${Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
             },
           },
