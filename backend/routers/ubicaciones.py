@@ -3,6 +3,7 @@ Endpoints para ubicaciones y posiciones.
 Posiciones son hijas de ubicaciones (Zona-Rack-Nivel).
 """
 
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 from uuid import UUID
@@ -15,6 +16,10 @@ from schemas.catalogs import (
 )
 
 router = APIRouter(tags=["ubicaciones"])
+
+# Ranking para decidir la clasificación "dominante" de una posición que
+# contiene más de un producto con distinta rotación: gana la más alta.
+_RANGO_CLASIFICACION = {"Alta": 3, "Media": 2, "Baja": 1, "Sin datos": 0}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -139,9 +144,11 @@ async def stock_posiciones_detalle(
 ):
     """
     Devuelve, para cada posición de la ubicación indicada, el desglose de
-    stock por producto (SKU). Se usa en el visor 3D para mostrar qué
-    productos hay al pasar el mouse sobre una posición, y para poder
-    filtrar/resaltar posiciones por SKU.
+    stock por producto (SKU) —incluyendo su clasificación de rotación— y
+    la clasificación "dominante" de la posición (la más alta entre sus
+    productos). Se usa en el visor 3D para mostrar qué productos hay al
+    pasar el mouse sobre una posición, y para poder filtrar/resaltar
+    posiciones por SKU, categoría o rotación.
     """
     db = get_user_client(user.token)
     res = (
@@ -152,12 +159,23 @@ async def stock_posiciones_detalle(
         .execute()
     )
 
+    # Rotación/clasificación por producto en los últimos 90 días (mismo
+    # cálculo que /dashboard/tabla-principal, vía f_rotacion_abc_asof).
+    hasta = datetime.now(timezone.utc)
+    desde = hasta - timedelta(days=90)
+    rotacion_res = db.rpc(
+        "f_rotacion_abc_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde.isoformat(), "p_hasta": hasta.isoformat()},
+    ).execute().data or []
+    rotacion_por_producto = {r["producto_id"]: r for r in rotacion_res}
+
     agrupado: dict[str, list] = {}
     for row in res.data:
         stock = row["stock_posicion"] or 0
         if stock <= 0:
             continue
         pid = row["posicion_id"]
+        rot = rotacion_por_producto.get(row["producto_id"])
         agrupado.setdefault(pid, []).append({
             "producto_id": row["producto_id"],
             "sku": row["sku"],
@@ -165,12 +183,21 @@ async def stock_posiciones_detalle(
             "stock": stock,
             "categoria_id": row.get("categoria_id"),
             "categoria_nombre": row.get("categoria_nombre"),
+            "rotacion": rot.get("rotacion") if rot else None,
+            "clasificacion": rot.get("clasificacion") if rot else "Sin datos",
         })
 
-    return [
-        {"posicion_id": pid, "productos": productos}
-        for pid, productos in agrupado.items()
-    ]
+    resultado = []
+    for pid, productos in agrupado.items():
+        clasificacion_dominante = max(
+            productos, key=lambda p: _RANGO_CLASIFICACION.get(p["clasificacion"], 0)
+        )["clasificacion"]
+        resultado.append({
+            "posicion_id": pid,
+            "productos": productos,
+            "clasificacion_dominante": clasificacion_dominante,
+        })
+    return resultado
 
 
 @router.post(
