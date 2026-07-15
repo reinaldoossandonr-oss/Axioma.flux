@@ -1,48 +1,79 @@
 """
 Endpoints del dashboard.
 Todas las vistas usan empresa_id del JWT → RLS garantiza aislamiento.
+
+Filtro de fecha global: todos los endpoints aceptan fecha_desde/fecha_hasta
+(query params, formato YYYY-MM-DD). Si no se envían, se usa por defecto
+el rango [hoy - 90 días, hoy]. El filtro se aplica de dos formas:
+  - Métricas de "estado actual" (stock, valor, reposición, ocupación):
+    se recalculan "a la fecha" (corte en fecha_hasta), usando fecha_desde
+    solo para la ventana de cálculo de consumo promedio diario.
+  - Métricas de flujo (salidas, merma): se acotan estrictamente al rango
+    [fecha_desde, fecha_hasta].
 """
 
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from auth.dependencies import CurrentUser, get_current_user
 from database.client import get_user_client
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
+def _resolver_rango(fecha_desde: Optional[str], fecha_hasta: Optional[str]) -> tuple[str, str]:
+    """Convierte los query params (YYYY-MM-DD) en un rango [desde, hasta] ISO,
+    incluyendo el día completo de fecha_hasta. Por defecto: últimos 90 días."""
+    if fecha_hasta:
+        hasta = datetime.fromisoformat(fecha_hasta)
+        if len(fecha_hasta) == 10:  # solo fecha, sin hora → incluir el día completo
+            hasta = hasta.replace(hour=23, minute=59, second=59, microsecond=999999)
+    else:
+        hasta = datetime.now(timezone.utc)
+    if hasta.tzinfo is None:
+        hasta = hasta.replace(tzinfo=timezone.utc)
+
+    if fecha_desde:
+        desde = datetime.fromisoformat(fecha_desde)
+        if desde.tzinfo is None:
+            desde = desde.replace(tzinfo=timezone.utc)
+    else:
+        desde = hasta - timedelta(days=90)
+
+    return desde.isoformat(), hasta.isoformat()
+
+
 @router.get("/resumen", summary="Resumen principal del dashboard")
-async def resumen(user: CurrentUser = Depends(get_current_user)):
+async def resumen(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
     """
-    Métricas clave para las tarjetas del dashboard:
-    - Total productos activos
-    - Productos a reponer
-    - Valor total del inventario
-    - Tasa de ocupación del almacén (posiciones con stock / posiciones activas)
+    Métricas clave para las tarjetas del dashboard, calculadas "a la fecha"
+    (fecha_hasta) y acotadas por el rango [fecha_desde, fecha_hasta] cuando
+    corresponde (merma, consumo promedio).
     """
     db = get_user_client(user.token)
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
 
-    # Stock y estados
-    stock_res = (
-        db.table("v_tabla_principal")
-        .select("estado, stock_actual, valor_inventario")
-        .eq("empresa_id", user.empresa_id)
-        .execute()
-    ).data
+    stock_res = db.rpc(
+        "f_stock_actual_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
+    ).execute().data or []
 
     total_productos = len(stock_res)
     a_reponer = sum(1 for r in stock_res if r.get("estado") == "Reponer")
     valor_total = sum((r.get("valor_inventario") or 0) for r in stock_res)
 
-    # Merma en valor (acumulado histórico: tipo='ajuste' AND motivo='merma')
-    merma_res = (
-        db.table("v_dashboard_merma_categoria")
-        .select("valor_total")
-        .eq("empresa_id", user.empresa_id)
-        .execute()
-    ).data
+    merma_res = db.rpc(
+        "f_merma_categoria_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+    ).execute().data or []
     merma_valor_total = sum((r.get("valor_total") or 0) for r in merma_res)
 
-    # Tasa de ocupación del almacén: posiciones activas con stock > 0 sobre el total de posiciones activas
+    # Tasa de ocupación del almacén "a la fecha"
     total_posiciones = (
         db.table("posiciones")
         .select("id", count="exact")
@@ -51,14 +82,11 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
         .execute()
     ).count or 0
 
-    ocupadas_res = (
-        db.table("v_stock_por_posicion")
-        .select("posicion_id, stock_posicion")
-        .eq("empresa_id", user.empresa_id)
-        .gt("stock_posicion", 0)
-        .execute()
-    ).data
-    posiciones_ocupadas = len({r["posicion_id"] for r in ocupadas_res})
+    ocupadas_res = db.rpc(
+        "f_stock_por_posicion_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta},
+    ).execute().data or []
+    posiciones_ocupadas = len({r["posicion_id"] for r in ocupadas_res if (r.get("stock_posicion") or 0) > 0})
 
     tasa_ocupacion_almacen = (
         round((posiciones_ocupadas / total_posiciones) * 100, 1) if total_posiciones > 0 else 0
@@ -74,120 +102,125 @@ async def resumen(user: CurrentUser = Depends(get_current_user)):
 
 
 @router.get("/stock-categorias", summary="Stock por categoría (gráfico 1)")
-async def stock_por_categoria(user: CurrentUser = Depends(get_current_user)):
-    """
-    Fuente: v_dashboard_stock_categoria
-    Formato listo para gráfico de barras/torta en el frontend.
-    """
+async def stock_por_categoria(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Agrupa f_stock_actual_asof por categoría, "a la fecha" (fecha_hasta)."""
     db = get_user_client(user.token)
-    return (
-        db.table("v_dashboard_stock_categoria")
-        .select("categoria, total_productos, stock_total, valor_total")
-        .eq("empresa_id", user.empresa_id)
-        .order("stock_total", desc=True)
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+
+    rows = db.rpc(
+        "f_stock_actual_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
+    ).execute().data or []
+
+    agrupado: dict[str, dict] = {}
+    for r in rows:
+        cat = r.get("categoria") or "Sin categoría"
+        g = agrupado.setdefault(cat, {"categoria": cat, "total_productos": 0, "stock_total": 0.0, "valor_total": 0.0})
+        g["total_productos"] += 1
+        g["stock_total"] += r.get("stock_actual") or 0
+        g["valor_total"] += r.get("valor_inventario") or 0
+
+    return sorted(agrupado.values(), key=lambda g: g["stock_total"], reverse=True)
 
 
 @router.get("/salidas-mensuales", summary="Salidas mensuales (gráfico 2)")
-async def salidas_mensuales(user: CurrentUser = Depends(get_current_user)):
-    """
-    Fuente: v_salidas_mensuales (últimos 12 meses)
-    Formato listo para gráfico de línea/barras.
-    """
+async def salidas_mensuales(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Salidas confirmadas acotadas a [fecha_desde, fecha_hasta], agrupadas por mes."""
     db = get_user_client(user.token)
-    return (
-        db.table("v_salidas_mensuales")
-        .select("mes, total_ordenes, cantidad_total, costo_total")
-        .eq("empresa_id", user.empresa_id)
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+    return db.rpc(
+        "f_salidas_mensuales_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+    ).execute().data or []
 
 
 @router.get("/tabla-principal", summary="Tabla principal con reglas de negocio")
 async def tabla_principal(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
     user: CurrentUser = Depends(get_current_user),
 ):
     """
-    Devuelve la vista completa v_tabla_principal:
-    SKU, nombre, stock_actual, consumo_promedio_diario,
-    dias_inventario, estado (Óptimo/Reponer/Sin consumo), cantidad_reponer.
+    Devuelve el stock "a la fecha" (fecha_hasta) de cada producto:
+    SKU, nombre, stock_actual, consumo_promedio_diario (calculado sobre
+    [fecha_desde, fecha_hasta]), dias_inventario, estado, cantidad_reponer.
     """
     db = get_user_client(user.token)
-    return (
-        db.table("v_tabla_principal")
-        .select(
-            "producto_id, sku, nombre, categoria, unidad_medida, "
-            "costo_promedio, precio_venta, stock_actual, "
-            "consumo_promedio_diario, dias_inventario, estado, cantidad_reponer, valor_inventario, "
-            "imagen_url"
-        )
-        .eq("empresa_id", user.empresa_id)
-        .order("nombre")
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+    rows = db.rpc(
+        "f_stock_actual_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
+    ).execute().data or []
+    return sorted(rows, key=lambda r: (r.get("nombre") or ""))
 
 
 @router.get("/alertas", summary="Productos que requieren reposición")
-async def alertas_reposicion(user: CurrentUser = Depends(get_current_user)):
-    """Lista rápida de productos con estado 'Reponer' para notificaciones."""
+async def alertas_reposicion(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Lista rápida de productos con estado 'Reponer' (a la fecha) para notificaciones."""
     db = get_user_client(user.token)
-    return (
-        db.table("v_tabla_principal")
-        .select("producto_id, sku, nombre, stock_actual, dias_inventario, cantidad_reponer")
-        .eq("empresa_id", user.empresa_id)
-        .eq("estado", "Reponer")
-        .order("dias_inventario")
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+    rows = db.rpc(
+        "f_stock_actual_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
+    ).execute().data or []
+    reponer = [r for r in rows if r.get("estado") == "Reponer"]
+    reponer.sort(key=lambda r: (r.get("dias_inventario") if r.get("dias_inventario") is not None else 0))
+    return reponer
 
 
 @router.get("/merma-categorias", summary="Merma en valor por categoría (gráfico)")
-async def merma_por_categoria(user: CurrentUser = Depends(get_current_user)):
-    """
-    Fuente: v_dashboard_merma_categoria (acumulado histórico).
-    Solo incluye órdenes confirmadas tipo='ajuste' con motivo='merma'.
-    """
+async def merma_por_categoria(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Merma confirmada (tipo='ajuste', motivo='merma') acotada a [fecha_desde, fecha_hasta]."""
     db = get_user_client(user.token)
-    return (
-        db.table("v_dashboard_merma_categoria")
-        .select("categoria, cantidad_total, valor_total")
-        .eq("empresa_id", user.empresa_id)
-        .order("valor_total", desc=True)
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+    return db.rpc(
+        "f_merma_categoria_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+    ).execute().data or []
 
 
-@router.get("/merma-diaria", summary="Evolución diaria de la merma (últimos 90 días)")
-async def merma_diaria(user: CurrentUser = Depends(get_current_user)):
-    """
-    Fuente: v_dashboard_merma_diaria (ventana móvil de 90 días).
-    Solo incluye órdenes confirmadas tipo='ajuste' con motivo='merma'.
-    """
+@router.get("/merma-diaria", summary="Evolución diaria de la merma")
+async def merma_diaria(
+    fecha_desde: Optional[str] = Query(None),
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Evolución diaria de la merma acotada a [fecha_desde, fecha_hasta]."""
     db = get_user_client(user.token)
-    return (
-        db.table("v_dashboard_merma_diaria")
-        .select("dia, cantidad_total, valor_total")
-        .eq("empresa_id", user.empresa_id)
-        .order("dia")
-        .execute()
-    ).data
+    desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+    return db.rpc(
+        "f_merma_diaria_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+    ).execute().data or []
 
 
 @router.get("/stock-posiciones", summary="Stock por posición física (Zona-Rack-Nivel)")
-async def stock_posiciones(user: CurrentUser = Depends(get_current_user)):
+async def stock_posiciones(
+    fecha_hasta: Optional[str] = Query(None),
+    user: CurrentUser = Depends(get_current_user),
+):
     """
-    Fuente: v_stock_por_posicion
-    Muestra dónde está cada producto dentro del centro de distribución.
+    Stock por posición (posicion_id, stock_posicion) calculado a la fecha indicada.
     """
     db = get_user_client(user.token)
-    return (
-        db.table("v_stock_por_posicion")
-        .select(
-            "producto_id, sku, producto_nombre, "
-            "ubicacion_nombre, posicion_codigo, zona, rack, nivel, stock_posicion"
-        )
-        .eq("empresa_id", user.empresa_id)
-        .order("posicion_codigo")
-        .execute()
-    ).data
+    _, hasta = _resolver_rango(None, fecha_hasta)
+    return db.rpc(
+        "f_stock_por_posicion_asof",
+        {"p_empresa_id": user.empresa_id, "p_hasta": hasta},
+    ).execute().data or []
