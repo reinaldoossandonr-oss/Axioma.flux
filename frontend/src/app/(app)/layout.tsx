@@ -8,14 +8,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Columna principal */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden lg:ml-64">
 
         {/* Top bar — solo en mobile */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <header className="lg:hidden shrink-0 sticky top-0 z-30 flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
@@ -34,8 +34,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Contenido de la página */}
-        <main className="flex-1 bg-slate-100">
+        {/* Contenido de la página — única región con scroll */}
+        <main className="flex-1 min-h-0 overflow-y-auto bg-slate-100">
           {children}
         </main>
       </div>
