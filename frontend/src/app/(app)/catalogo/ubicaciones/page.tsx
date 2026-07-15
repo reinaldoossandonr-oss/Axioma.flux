@@ -66,6 +66,13 @@ export default function UbicacionesPage() {
     return Math.round((ocupadas / posiciones.length) * 1000) / 10
   }, [posiciones, stockPorPosicion])
 
+  const conteoPosiciones = useMemo(() => {
+    const ocupadas = posiciones.filter(p => (stockPorPosicion[p.id] ?? 0) > 0).length
+    const libres = posiciones.length - ocupadas
+    const unidadesTotales = Object.values(stockPorPosicion).reduce((acc, v) => acc + (v ?? 0), 0)
+    return { ocupadas, libres, unidadesTotales }
+  }, [posiciones, stockPorPosicion])
+
   async function cargarUbicaciones() {
     try {
       const data = await ubicacionesApi.listar()
@@ -238,31 +245,31 @@ export default function UbicacionesPage() {
         </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col gap-4 md:gap-5">
-        {/* Lista horizontal de ubicaciones */}
-        <div className="card flex-shrink-0">
-          <h2 className="font-semibold text-slate-700 mb-3">Ubicaciones</h2>
+      <div className="flex-1 min-h-0 flex flex-col sm:flex-row gap-4 md:gap-5">
+        {/* Sidebar vertical de ubicaciones (~20% del ancho) */}
+        <div className="card flex-shrink-0 sm:basis-1/5 sm:min-w-[200px] sm:max-w-[260px] flex flex-col min-h-0">
+          <h2 className="font-semibold text-slate-700 mb-3 flex-shrink-0">Ubicaciones</h2>
           {loadingUbic ? (
-            <div className="flex gap-2 animate-pulse">
-              {[1, 2, 3].map(i => <div key={i} className="h-10 w-40 bg-slate-100 rounded-lg flex-shrink-0" />)}
+            <div className="flex flex-col gap-2 animate-pulse">
+              {[1, 2, 3].map(i => <div key={i} className="h-10 w-full bg-slate-100 rounded-lg flex-shrink-0" />)}
             </div>
           ) : ubicaciones.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8">Sin ubicaciones</p>
           ) : (
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="flex flex-col gap-2 overflow-y-auto -mx-1 px-1">
               {ubicaciones.map(u => (
                 <button
                   key={u.id}
                   onClick={() => seleccionar(u)}
-                  className={`flex-shrink-0 text-left px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                     seleccionada?.id === u.id
                       ? 'bg-primary text-white'
                       : 'hover:bg-slate-50 text-slate-700 border border-slate-200'
                   }`}
                 >
-                  <span className="font-medium">{u.nombre}</span>
+                  <span className="font-medium block truncate">{u.nombre}</span>
                   {u.tipo && (
-                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
+                    <span className={`mt-1 inline-block text-xs px-1.5 py-0.5 rounded ${
                       seleccionada?.id === u.id
                         ? 'bg-white/20 text-white'
                         : 'bg-slate-100 text-slate-500'
@@ -276,8 +283,8 @@ export default function UbicacionesPage() {
           )}
         </div>
 
-        {/* Posiciones de la ubicación seleccionada — usa todo el ancho para que el visor 3D tenga más espacio */}
-        <div className="card flex-1 min-h-0 flex flex-col">
+        {/* Posiciones de la ubicación seleccionada — el resto del ancho (~80%), en vertical, más espacio para el visor 3D */}
+        <div className="card flex-1 min-h-0 min-w-0 flex flex-col">
           {!seleccionada ? (
             <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
               Selecciona una ubicación para ver sus posiciones
@@ -293,9 +300,9 @@ export default function UbicacionesPage() {
                     <p className="text-xs text-slate-400">Zona-Rack-Nivel</p>
                   </div>
 
-                  {/* Indicadores grandes: Posiciones y Ocupación */}
+                  {/* Indicadores grandes: Posiciones, Ocupación, Libres, Ocupadas y Unidades */}
                   {posiciones.length > 0 && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-2 min-w-[110px]">
                         <p className="text-2xl md:text-3xl font-bold text-slate-800 leading-none">
                           {posiciones.length.toLocaleString('es-CL')}
@@ -307,6 +314,24 @@ export default function UbicacionesPage() {
                           {tasaOcupacion.toLocaleString('es-CL')}%
                         </p>
                         <p className="text-xs text-sky-600 mt-1">Ocupación</p>
+                      </div>
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-emerald-700 leading-none">
+                          {conteoPosiciones.ocupadas.toLocaleString('es-CL')}
+                        </p>
+                        <p className="text-xs text-emerald-600 mt-1">Ocupadas</p>
+                      </div>
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-amber-700 leading-none">
+                          {conteoPosiciones.libres.toLocaleString('es-CL')}
+                        </p>
+                        <p className="text-xs text-amber-600 mt-1">Libres</p>
+                      </div>
+                      <div className="rounded-xl bg-violet-50 border border-violet-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-violet-700 leading-none">
+                          {conteoPosiciones.unidadesTotales.toLocaleString('es-CL')}
+                        </p>
+                        <p className="text-xs text-violet-600 mt-1">Unidades</p>
                       </div>
                     </div>
                   )}
