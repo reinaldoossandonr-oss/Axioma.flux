@@ -26,17 +26,6 @@ export interface Categoria {
   activo: boolean
 }
 
-export interface Proveedor {
-  id: string
-  empresa_id: string
-  nombre: string
-  ruc_nit?: string
-  contacto?: string
-  email?: string
-  telefono?: string
-  activo: boolean
-}
-
 export interface Ubicacion {
   id: string
   empresa_id: string
