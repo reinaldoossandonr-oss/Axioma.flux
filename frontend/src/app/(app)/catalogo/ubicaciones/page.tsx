@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ubicacionesApi, posicionesApi, categoriasApi, ApiError } from '@/lib/api'
-import Visor3D, { ProductoEnPosicion, ModoColor3D, ClaseRotacion } from '@/components/ubicaciones/Visor3D'
+import Visor3D, { ProductoEnPosicion, ModoColor3D, ClaseRotacion, COLOR_VACIO, COLOR_CON_STOCK, COLOR_ROTACION } from '@/components/ubicaciones/Visor3D'
 import { useEmpresaNombre } from '@/lib/useEmpresa'
 
 interface Categoria {
@@ -464,6 +464,23 @@ export default function UbicacionesPage() {
                         Rotación
                       </button>
                     </div>
+
+                    {/* Leyenda de colores: varía según el modo de color activo */}
+                    <div className="flex items-center gap-3 flex-wrap ml-2">
+                      {modoColor === 'ocupacion' ? (
+                        <>
+                          <LeyendaItem color={COLOR_CON_STOCK} label="Con stock" />
+                          <LeyendaItem color={COLOR_VACIO} label="Vacía" />
+                        </>
+                      ) : (
+                        <>
+                          <LeyendaItem color={COLOR_ROTACION.Alta} label="Alta" />
+                          <LeyendaItem color={COLOR_ROTACION.Media} label="Media" />
+                          <LeyendaItem color={COLOR_ROTACION.Baja} label="Baja" />
+                          <LeyendaItem color={COLOR_ROTACION['Sin datos']} label="Sin datos" />
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1 min-h-0">
@@ -535,5 +552,14 @@ export default function UbicacionesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function LeyendaItem({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+      {label}
+    </span>
   )
 }
