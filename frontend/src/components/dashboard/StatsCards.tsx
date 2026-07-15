@@ -40,13 +40,6 @@ export default function StatsCards({ resumen }: Props) {
       icon: <AlertIcon />,
     },
     {
-      label: 'Stock Actual',
-      value: resumen.total_productos.toLocaleString('es-CL'),
-      subtitle: 'Cantidad de productos totales',
-      color: 'bg-indigo-500',
-      icon: <ClipboardIcon />,
-    },
-    {
       label: 'Valor inventario',
       value: `$${resumen.valor_inventario_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
       subtitle: 'A costo promedio (CPP)',
@@ -70,7 +63,7 @@ export default function StatsCards({ resumen }: Props) {
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
       {stats.map((stat) => (
         <div key={stat.label} className="card flex items-center gap-4">
           <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
@@ -102,14 +95,6 @@ function StackIcon() {
     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
         d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  )
-}
-function ClipboardIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
     </svg>
   )
 }
