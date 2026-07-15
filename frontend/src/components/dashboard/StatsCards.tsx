@@ -20,13 +20,13 @@ export default function StatsCards({ resumen }: Props) {
   const stats: Stat[] = [
     {
       label: 'Productos activos',
-      value: resumen.total_productos,
+      value: resumen.total_productos.toLocaleString('es-CL'),
       color: 'bg-primary',
       icon: <BoxIcon />,
     },
     {
       label: 'Requieren reposición',
-      value: resumen.productos_a_reponer,
+      value: resumen.productos_a_reponer.toLocaleString('es-CL'),
       subtitle: 'Menos de 45 días de stock',
       color: 'bg-red-500',
       icon: <AlertIcon />,
