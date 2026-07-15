@@ -164,16 +164,37 @@ async def tabla_principal(
     """
     Devuelve el stock "a la fecha" (fecha_hasta) de cada producto:
     SKU, nombre, stock_actual, consumo_promedio_diario (calculado sobre
-    [fecha_desde, fecha_hasta]), dias_inventario, estado, cantidad_reponer.
+    [fecha_desde, fecha_hasta]), dias_inventario, estado, cantidad_reponer,
+    rotacion y clasificacion ABC.
+
+    Rotación = unidades vendidas en [fecha_desde, fecha_hasta] / inventario
+    promedio diario del mismo periodo (promedio del saldo de existencias de
+    cada día del rango, "a la fecha" de cada día — no solo el neto del rango).
+    Clasificación ABC sobre esa rotación: A (>=6), B ([2, 6)), C (<2).
     """
     db = get_user_client(user.token)
     desde, hasta = _resolver_rango(fecha_desde, fecha_hasta)
+
     rows = db.rpc(
         "f_stock_actual_asof",
         {"p_empresa_id": user.empresa_id, "p_hasta": hasta, "p_desde": desde},
     ).execute().data or []
     if categoria_id:
         rows = [r for r in rows if r.get("categoria_id") == categoria_id]
+
+    rotacion_res = db.rpc(
+        "f_rotacion_abc_asof",
+        {"p_empresa_id": user.empresa_id, "p_desde": desde, "p_hasta": hasta},
+    ).execute().data or []
+    rotacion_por_producto = {r["producto_id"]: r for r in rotacion_res}
+
+    for r in rows:
+        rot = rotacion_por_producto.get(r.get("producto_id"))
+        r["unidades_vendidas_periodo"] = rot.get("unidades_vendidas") if rot else 0
+        r["inventario_promedio_diario"] = rot.get("inventario_promedio_diario") if rot else 0
+        r["rotacion"] = rot.get("rotacion") if rot else None
+        r["clasificacion"] = rot.get("clasificacion") if rot else "Sin datos"
+
     return sorted(rows, key=lambda r: (r.get("nombre") or ""))
 
 
