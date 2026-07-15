@@ -72,6 +72,7 @@ async def resumen(
     total_productos = len(stock_res)
     a_reponer = sum(1 for r in stock_res if r.get("estado") == "Reponer")
     valor_total = sum((r.get("valor_inventario") or 0) for r in stock_res)
+    unidades_totales = sum((r.get("stock_actual") or 0) for r in stock_res)
 
     merma_res = db.rpc(
         "f_merma_categoria_asof",
@@ -104,6 +105,7 @@ async def resumen(
         "total_productos": total_productos,
         "productos_a_reponer": a_reponer,
         "valor_inventario_total": round(valor_total, 2),
+        "unidades_totales": round(unidades_totales, 1),
         "tasa_ocupacion_almacen": tasa_ocupacion_almacen,
         "merma_valor_total": round(merma_valor_total, 2),
     }
