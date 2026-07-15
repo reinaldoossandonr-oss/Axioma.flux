@@ -202,7 +202,7 @@ function Cargando() {
 
 export default function Visor3D(props: Visor3DProps) {
   return (
-    <div className="relative w-full h-[520px] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
+    <div className="relative w-full h-full min-h-[360px] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
       <Canvas
         shadows
         dpr={[1, 2]}
