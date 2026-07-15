@@ -38,15 +38,29 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────
+export interface RangoFechas {
+  fecha_desde?: string // YYYY-MM-DD
+  fecha_hasta?: string // YYYY-MM-DD
+}
+
+function qsRango(rango?: RangoFechas): string {
+  if (!rango) return ''
+  const params = new URLSearchParams()
+  if (rango.fecha_desde) params.set('fecha_desde', rango.fecha_desde)
+  if (rango.fecha_hasta) params.set('fecha_hasta', rango.fecha_hasta)
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
 export const dashboardApi = {
-  resumen:          () => apiFetch<any>('/dashboard/resumen'),
-  stockCategorias:  () => apiFetch<any[]>('/dashboard/stock-categorias'),
-  salidasMensuales: () => apiFetch<any[]>('/dashboard/salidas-mensuales'),
-  tablaPrincipal:   () => apiFetch<any[]>('/dashboard/tabla-principal'),
-  alertas:          () => apiFetch<any[]>('/dashboard/alertas'),
-  stockPosiciones:  () => apiFetch<any[]>('/dashboard/stock-posiciones'),
-  mermaCategorias:  () => apiFetch<any[]>('/dashboard/merma-categorias'),
-  mermaDiaria:      () => apiFetch<any[]>('/dashboard/merma-diaria'),
+  resumen:          (rango?: RangoFechas) => apiFetch<any>(`/dashboard/resumen${qsRango(rango)}`),
+  stockCategorias:  (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/stock-categorias${qsRango(rango)}`),
+  salidasMensuales: (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/salidas-mensuales${qsRango(rango)}`),
+  tablaPrincipal:   (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/tabla-principal${qsRango(rango)}`),
+  alertas:          (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/alertas${qsRango(rango)}`),
+  stockPosiciones:  (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/stock-posiciones${qsRango(rango)}`),
+  mermaCategorias:  (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/merma-categorias${qsRango(rango)}`),
+  mermaDiaria:      (rango?: RangoFechas) => apiFetch<any[]>(`/dashboard/merma-diaria${qsRango(rango)}`),
 }
 
 // Bucket de Supabase Storage para imágenes de producto (público, RLS por empresa)
@@ -146,13 +160,6 @@ export const categoriasApi = {
   actualizar: (id: string, data: any) =>
     apiFetch<any>(`/categorias/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   eliminar: (id: string) => apiFetch<void>(`/categorias/${id}`, { method: 'DELETE' }),
-}
-
-export const proveedoresApi = {
-  listar: () => apiFetch<any[]>('/proveedores'),
-  crear: (data: any) => apiFetch<any>('/proveedores', { method: 'POST', body: JSON.stringify(data) }),
-  actualizar: (id: string, data: any) =>
-    apiFetch<any>(`/proveedores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 }
 
 // Bucket de Supabase Storage para diseños 3D de centros de distribución (público, RLS por empresa)
