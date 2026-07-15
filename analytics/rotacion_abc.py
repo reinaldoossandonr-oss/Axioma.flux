@@ -1,8 +1,8 @@
 """
-Axioma — Análisis de rotación de inventario y clasificación ABC.
+Axioma — Análisis de rotación de inventario y clasificación por rotación.
 
 Calcula, para cada SKU de una empresa, la rotación de inventario en un
-periodo y la clasifica en A (alta rotación), B (media) o C (baja):
+periodo y la clasifica en Alta, Media o Baja rotación:
 
     Rotación = Unidades vendidas (periodo) / Inventario promedio diario (periodo)
 
@@ -37,15 +37,15 @@ from dotenv import load_dotenv
 from supabase import Client, create_client
 
 # Colores por clasificación — mismos tonos que el badge de la UI
-# (verde = A, ámbar = B, rojo = C) para que el análisis y el dashboard
-# se lean como una sola cosa.
+# (verde = Alta, ámbar = Media, rojo = Baja) para que el análisis y el
+# dashboard se lean como una sola cosa.
 COLOR_POR_CLASE = {
-    "A": "#059669",         # emerald-600
-    "B": "#D97706",         # amber-600
-    "C": "#DC2626",         # red-600
+    "Alta": "#059669",       # emerald-600
+    "Media": "#D97706",      # amber-600
+    "Baja": "#DC2626",       # red-600
     "Sin datos": "#94A3B8",  # slate-400
 }
-ORDEN_CLASES = ["A", "B", "C", "Sin datos"]
+ORDEN_CLASES = ["Alta", "Media", "Baja", "Sin datos"]
 
 
 def cargar_credenciales() -> tuple[str, str]:
@@ -118,7 +118,7 @@ def graficar_conteo_por_clase(df: pd.DataFrame, empresa_id: str, out_path: str) 
             str(int(valor)), ha="center", va="bottom", fontsize=12, fontweight="medium", color="#1E293B",
         )
 
-    ax.set_title("Clasificación ABC de inventario por rotación", fontsize=14, fontweight="medium", pad=14)
+    ax.set_title("Clasificación de inventario por rotación", fontsize=14, fontweight="medium", pad=14)
     ax.set_xlabel("")
     ax.set_ylabel("Cantidad de SKUs", fontsize=11, color="#475569")
     ax.set_ylim(0, max(conteo.values) * 1.18)
