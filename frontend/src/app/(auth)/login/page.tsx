@@ -256,7 +256,7 @@ export default function LoginPage() {
 
           {/* Divider + contacto */}
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               ¿Problemas para acceder?{' '}
               <span className="font-semibold cursor-pointer" style={{ color: '#1AABF0' }}>
                 Contacta al administrador
@@ -266,7 +266,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="absolute bottom-6 text-[11px] text-slate-300 tracking-wide">
+        <p className="absolute bottom-6 text-xs text-slate-400 tracking-wide">
           © 2026 Axioma Flux · Todos los derechos reservados
         </p>
       </div>
