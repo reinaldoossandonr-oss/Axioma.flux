@@ -188,7 +188,10 @@ export const ubicacionesApi = {
         stock: number
         categoria_id: string | null
         categoria_nombre: string | null
+        rotacion: number | null
+        clasificacion: string
       }[]
+      clasificacion_dominante: string
     }[]>(`/ubicaciones/${ubicacionId}/stock-posiciones-detalle`),
 
   /**

@@ -25,11 +25,13 @@ const PALETTE = [
   '#2563EB', '#0D9488', '#B45309', '#7C3AED',
   '#0891B2', '#BE185D', '#4D7C0F', '#C2410C',
 ]
-// Paleta en tonos rojo/naranja para resaltar que representa pérdida (merma),
-// con más contraste de matiz y luminosidad entre valores para distinguirlas mejor.
+// Paleta de "Merma por categoría": mismos colores que los íconos de los
+// indicadores del dashboard (Productos, Reponer, Valor, Ocupación, Merma),
+// para que se lea coherente con el resto de la página y las categorías
+// se distingan claramente entre sí (en vez de variaciones de un solo tono).
 const PALETTE_MERMA = [
-  '#9F1239', '#DC2626', '#EA580C', '#BE185D',
-  '#7C2D12', '#FB7185', '#C2410C', '#FDA4AF',
+  '#1AABF0', '#EF4444', '#10B981', '#F59E0B', '#E11D48',
+  '#8B5CF6', '#06B6D4', '#F97316',
 ]
 const TOOLTIP_BASE = {
   backgroundColor: '#0F172A',
@@ -81,6 +83,68 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
           y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10.5 } } },
+        },
+      }}
+    />
+  )
+}
+
+// ── GRÁFICO: SKUs por clasificación de rotación ──────────────
+const ORDEN_CLASES_ROTACION = ['Alta', 'Media', 'Baja', 'Sin datos']
+const COLOR_CLASE_ROTACION: Record<string, string> = {
+  Alta: '#10B981',       // emerald-500 — coincide con el badge/indicador
+  Media: '#F59E0B',      // amber-500
+  Baja: '#EF4444',       // red-500
+  'Sin datos': '#94A3B8', // slate-400
+}
+
+interface SkuPorClasificacionProps {
+  data: { clasificacion?: string | null }[]
+}
+
+export function SkuPorClasificacionChart({ data }: SkuPorClasificacionProps) {
+  if (!data?.length) return <EmptyChart mensaje="Sin datos de rotación" />
+
+  const conteo: Record<string, number> = {}
+  for (const row of data) {
+    const c = row.clasificacion || 'Sin datos'
+    conteo[c] = (conteo[c] ?? 0) + 1
+  }
+  const labels = ORDEN_CLASES_ROTACION.filter(c => conteo[c])
+  if (!labels.length) return <EmptyChart mensaje="Sin datos de rotación" />
+
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: 'SKUs',
+        data: labels.map(c => conteo[c]),
+        backgroundColor: labels.map(c => COLOR_CLASE_ROTACION[c]),
+        borderRadius: 3,
+        borderSkipped: false,
+        maxBarThickness: 46,
+      },
+    ],
+  }
+
+  return (
+    <Bar
+      data={chartData}
+      options={{
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            ...TOOLTIP_BASE,
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.y ?? 0} SKU${(ctx.parsed.y ?? 0) === 1 ? '' : 's'}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10.5 }, precision: 0 } },
         },
       }}
     />

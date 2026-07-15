@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ubicacionesApi, posicionesApi, categoriasApi, ApiError } from '@/lib/api'
-import Visor3D, { ProductoEnPosicion } from '@/components/ubicaciones/Visor3D'
+import Visor3D, { ProductoEnPosicion, ModoColor3D, ClaseRotacion } from '@/components/ubicaciones/Visor3D'
 import { useEmpresaNombre } from '@/lib/useEmpresa'
 
 interface Categoria {
@@ -36,6 +36,7 @@ export default function UbicacionesPage() {
   const [posiciones, setPosiciones] = useState<Posicion[]>([])
   const [stockPorPosicion, setStockPorPosicion] = useState<Record<string, number>>({})
   const [detallePorPosicion, setDetallePorPosicion] = useState<Record<string, ProductoEnPosicion[]>>({})
+  const [clasificacionPorPosicion, setClasificacionPorPosicion] = useState<Record<string, string>>({})
   const [loadingUbic, setLoadingUbic] = useState(true)
   const [loadingPos, setLoadingPos] = useState(false)
   const [formUbic, setFormUbic] = useState({ nombre: '', tipo: 'almacen', descripcion: '' })
@@ -50,6 +51,8 @@ export default function UbicacionesPage() {
   const [filtroSku, setFiltroSku] = useState('')
   const [filtroNombre, setFiltroNombre] = useState('')
   const [filtroCategoriaId, setFiltroCategoriaId] = useState('')
+  const [filtroRotacion, setFiltroRotacion] = useState<ClaseRotacion[]>([])
+  const [modoColor, setModoColor] = useState<ModoColor3D>('ocupacion')
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const disenoInputRef = useRef<HTMLInputElement>(null)
 
@@ -88,6 +91,9 @@ export default function UbicacionesPage() {
       setDetallePorPosicion(
         Object.fromEntries(detalleData.map(d => [d.posicion_id, d.productos]))
       )
+      setClasificacionPorPosicion(
+        Object.fromEntries(detalleData.map(d => [d.posicion_id, d.clasificacion_dominante]))
+      )
     } finally {
       setLoadingPos(false)
     }
@@ -101,7 +107,14 @@ export default function UbicacionesPage() {
     setFiltroSku('')
     setFiltroNombre('')
     setFiltroCategoriaId('')
+    setFiltroRotacion([])
     cargarPosiciones(u.id)
+  }
+
+  function toggleFiltroRotacion(clase: ClaseRotacion) {
+    setFiltroRotacion(prev =>
+      prev.includes(clase) ? prev.filter(c => c !== clase) : [...prev, clase]
+    )
   }
 
   function handleClickSubirDiseno() {
@@ -357,7 +370,7 @@ export default function UbicacionesPage() {
                 </div>
               ) : vista === '3d' && seleccionada.diseno_3d_url ? (
                 <div className="flex-1 min-h-0 flex flex-col gap-3">
-                  <div className="flex flex-wrap gap-2 flex-shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                     <input
                       type="text"
                       value={filtroSku}
@@ -382,20 +395,69 @@ export default function UbicacionesPage() {
                         <option key={c.id} value={c.id}>{c.nombre}</option>
                       ))}
                     </select>
+
+                    <span className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
+
+                    <span className="text-xs font-medium text-slate-500">Rotación:</span>
+                    {(['Alta', 'Media', 'Baja'] as ClaseRotacion[]).map(clase => (
+                      <button
+                        key={clase}
+                        type="button"
+                        onClick={() => toggleFiltroRotacion(clase)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                          filtroRotacion.includes(clase)
+                            ? clase === 'Alta'
+                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                              : clase === 'Media'
+                                ? 'bg-amber-500 border-amber-500 text-white'
+                                : 'bg-red-500 border-red-500 text-white'
+                            : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {clase}
+                      </button>
+                    ))}
                   </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-medium text-slate-500">Color según:</span>
+                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-sm">
+                      <button
+                        onClick={() => setModoColor('ocupacion')}
+                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                          modoColor === 'ocupacion' ? 'bg-white shadow-sm text-slate-800 font-medium' : 'text-slate-500'
+                        }`}
+                      >
+                        Ocupación
+                      </button>
+                      <button
+                        onClick={() => setModoColor('rotacion')}
+                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                          modoColor === 'rotacion' ? 'bg-white shadow-sm text-slate-800 font-medium' : 'text-slate-500'
+                        }`}
+                      >
+                        Rotación
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex-1 min-h-0">
                     <Visor3D
                       disenoUrl={seleccionada.diseno_3d_url}
                       posiciones={posiciones}
                       stockPorPosicion={stockPorPosicion}
                       detallePorPosicion={detallePorPosicion}
+                      clasificacionPorPosicion={clasificacionPorPosicion}
+                      modoColor={modoColor}
                       filtroSku={filtroSku}
                       filtroNombre={filtroNombre}
                       filtroCategoriaId={filtroCategoriaId}
+                      filtroRotacion={filtroRotacion}
                     />
                   </div>
                   <p className="text-xs text-slate-400 flex-shrink-0">
-                    Pasa el mouse sobre una posición para ver su contenido. Los nombres de los objetos del
+                    Pasa el mouse sobre una posición para ver su contenido. Las posiciones que no coinciden con un
+                    filtro activo se ocultan por completo. Los nombres de los objetos del
                     modelo 3D deben coincidir con el código de posición (ej: A-1-1) para el emparejamiento automático.
                   </p>
                 </div>

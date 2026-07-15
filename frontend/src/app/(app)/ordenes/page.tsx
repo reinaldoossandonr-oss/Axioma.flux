@@ -70,12 +70,12 @@ export default function OrdenesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="table-th">Fecha</th>
-                <th className="table-th">Tipo</th>
-                <th className="table-th">Referencia</th>
-                <th className="table-th">Estado</th>
-                <th className="table-th text-right">Costo total</th>
-                <th className="table-th text-right"></th>
+                <th className="table-th text-center">Fecha</th>
+                <th className="table-th text-center">Tipo</th>
+                <th className="table-th text-center">Referencia</th>
+                <th className="table-th text-center">Estado</th>
+                <th className="table-th text-center">Costo total</th>
+                <th className="table-th text-center"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -101,18 +101,18 @@ export default function OrdenesPage() {
               ) : (
                 ordenes.map((o: any) => (
                   <tr key={o.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="table-td text-slate-500">
+                    <td className="table-td text-center text-slate-500">
                       {new Date(o.fecha).toLocaleDateString('es-CL', {
                         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </td>
-                    <td className="table-td"><TipoBadge tipo={o.tipo} /></td>
-                    <td className="table-td text-slate-500">{o.referencia ?? '—'}</td>
-                    <td className="table-td"><EstadoBadge estado={o.estado} /></td>
-                    <td className="table-td text-right font-semibold">
+                    <td className="table-td text-center"><TipoBadge tipo={o.tipo} /></td>
+                    <td className="table-td text-center text-slate-500">{o.referencia ?? '—'}</td>
+                    <td className="table-td text-center"><EstadoBadge estado={o.estado} /></td>
+                    <td className="table-td text-center font-semibold">
                       ${o.costo_total?.toLocaleString('es-CL', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="table-td text-right">
+                    <td className="table-td text-center">
                       <Link
                         href={`/ordenes/${o.id}`}
                         className="text-primary text-xs hover:underline"

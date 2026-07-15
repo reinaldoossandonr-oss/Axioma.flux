@@ -20,41 +20,64 @@ export interface ProductoEnPosicion {
   stock: number
   categoria_id?: string | null
   categoria_nombre?: string | null
+  rotacion?: number | null
+  clasificacion?: string
 }
+
+export type ModoColor3D = 'ocupacion' | 'rotacion'
+export type ClaseRotacion = 'Alta' | 'Media' | 'Baja'
 
 interface Visor3DProps {
   disenoUrl: string
   posiciones: PosicionVisor3D[]
   stockPorPosicion: Record<string, number>
   detallePorPosicion?: Record<string, ProductoEnPosicion[]>
+  clasificacionPorPosicion?: Record<string, string>
+  modoColor?: ModoColor3D
   filtroSku?: string
   filtroNombre?: string
   filtroCategoriaId?: string
+  filtroRotacion?: ClaseRotacion[]
   onSeleccionarPosicion?: (posicion: PosicionVisor3D) => void
 }
 
 const COLOR_VACIO = '#94a3b8'      // slate-400
 const COLOR_CON_STOCK = '#1AABF0'  // azul de marca
-const COLOR_COINCIDE = '#22c55e'   // verde, coincide filtro SKU
+const COLOR_COINCIDE = '#22c55e'   // verde, coincide filtro (modo Ocupación)
+const COLOR_MATCH_GLOW = '#38BDF8' // sky-400, brillo de coincidencia en modo Rotación (no pisa el color semántico)
 const COLOR_HOVER_EMISSIVE = '#1AABF0'
+
+// Mismos tonos que el badge de clasificación en el resto del dashboard.
+const COLOR_ROTACION: Record<string, string> = {
+  Alta: '#10B981',       // emerald-500
+  Media: '#F59E0B',      // amber-500
+  Baja: '#EF4444',       // red-500
+  'Sin datos': COLOR_VACIO,
+}
 
 function BinsInteractivos({
   scene,
   posiciones,
   stockPorPosicion,
   detallePorPosicion,
+  clasificacionPorPosicion,
+  modoColor = 'ocupacion',
   filtroSku,
   filtroNombre,
   filtroCategoriaId,
+  filtroRotacion,
   onSeleccionarPosicion,
 }: {
   scene: THREE.Object3D
   posiciones: PosicionVisor3D[]
   stockPorPosicion: Record<string, number>
   detallePorPosicion: Record<string, ProductoEnPosicion[]>
+  clasificacionPorPosicion: Record<string, string>
+  modoColor?: ModoColor3D
   filtroSku?: string
   filtroNombre?: string
   filtroCategoriaId?: string
+  filtroRotacion?: ClaseRotacion[]
   onSeleccionarPosicion?: (posicion: PosicionVisor3D) => void
 }) {
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -79,7 +102,9 @@ function BinsInteractivos({
   const skuActivo = !!filtroSku && filtroSku.trim().length > 0
   const nombreActivo = !!filtroNombre && filtroNombre.trim().length > 0
   const categoriaActiva = !!filtroCategoriaId && filtroCategoriaId.trim().length > 0
-  const filtroActivo = skuActivo || nombreActivo || categoriaActiva
+  const rotacionActiva = !!filtroRotacion && filtroRotacion.length > 0
+  const filtroProductoActivo = skuActivo || nombreActivo || categoriaActiva
+  const filtroActivo = filtroProductoActivo || rotacionActiva
   const skuLower = filtroSku?.trim().toLowerCase() ?? ''
   const nombreLower = filtroNombre?.trim().toLowerCase() ?? ''
 
@@ -88,25 +113,38 @@ function BinsInteractivos({
       {bins.map(({ pos, geometry, matrix }) => {
         const stock = stockPorPosicion[pos.id] ?? 0
         const productos = detallePorPosicion[pos.id] ?? []
-        const coincideFiltro = filtroActivo && productos.some(p =>
+        const clasificacionPos = clasificacionPorPosicion[pos.id] ?? 'Sin datos'
+
+        const cumpleProducto = !filtroProductoActivo || productos.some(p =>
           (!skuActivo || p.sku.toLowerCase().includes(skuLower)) &&
           (!nombreActivo || p.nombre.toLowerCase().includes(nombreLower)) &&
           (!categoriaActiva || p.categoria_id === filtroCategoriaId)
         )
+        const cumpleRotacion = !rotacionActiva || filtroRotacion!.includes(clasificacionPos as ClaseRotacion)
+        const coincideFiltro = filtroActivo && cumpleProducto && cumpleRotacion
+
+        // Todos los filtros (SKU, nombre, categoría, rotación) ocultan por
+        // completo las posiciones que no coinciden — no se dibujan.
+        if (filtroActivo && !coincideFiltro) return null
+
         const isHover = hoverId === pos.id
 
-        let color = stock > 0 ? COLOR_CON_STOCK : COLOR_VACIO
+        let color = modoColor === 'rotacion'
+          ? (COLOR_ROTACION[clasificacionPos] ?? COLOR_VACIO)
+          : (stock > 0 ? COLOR_CON_STOCK : COLOR_VACIO)
         let emissive = '#000000'
         let emissiveIntensity = 0
-        let opacity = 1
+        const opacity = 1
 
-        if (filtroActivo) {
-          if (coincideFiltro) {
+        if (filtroActivo && coincideFiltro) {
+          if (modoColor === 'ocupacion') {
             color = COLOR_COINCIDE
             emissive = COLOR_COINCIDE
             emissiveIntensity = 0.55
           } else {
-            opacity = 0.12
+            // En modo Rotación no pisamos el color (ya es semántico: Alta/Media/Baja).
+            emissive = COLOR_MATCH_GLOW
+            emissiveIntensity = 0.6
           }
         }
         if (isHover) {
@@ -137,7 +175,17 @@ function BinsInteractivos({
             {isHover && (
               <Html distanceFactor={7} position={[0, 0.35, 0]} style={{ pointerEvents: 'none' }} center>
                 <div className="px-4 py-3 rounded-lg bg-slate-900/95 text-white text-base shadow-2xl min-w-[240px] max-w-[300px] whitespace-nowrap">
-                  <p className="font-bold font-mono mb-1.5 text-xl">{pos.codigo}</p>
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <p className="font-bold font-mono text-xl">{pos.codigo}</p>
+                    {productos.length > 0 && (
+                      <span
+                        className="text-xs font-medium px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${COLOR_ROTACION[clasificacionPos]}26`, color: COLOR_ROTACION[clasificacionPos] }}
+                      >
+                        {clasificacionPos}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-slate-300 mb-1.5 text-base">{stock.toLocaleString('es-CL')} unidades</p>
                   {productos.length > 0 ? (
                     <ul className="space-y-1.5">
@@ -180,9 +228,12 @@ function Modelo(props: Visor3DProps) {
         posiciones={props.posiciones}
         stockPorPosicion={props.stockPorPosicion}
         detallePorPosicion={props.detallePorPosicion ?? {}}
+        clasificacionPorPosicion={props.clasificacionPorPosicion ?? {}}
+        modoColor={props.modoColor}
         filtroSku={props.filtroSku}
         filtroNombre={props.filtroNombre}
         filtroCategoriaId={props.filtroCategoriaId}
+        filtroRotacion={props.filtroRotacion}
         onSeleccionarPosicion={props.onSeleccionarPosicion}
       />
     </>

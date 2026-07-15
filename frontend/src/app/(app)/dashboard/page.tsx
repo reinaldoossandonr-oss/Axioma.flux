@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { dashboardApi, categoriasApi, RangoFechas } from '@/lib/api'
 import { useEmpresaNombre } from '@/lib/useEmpresa'
 import StatsCards from '@/components/dashboard/StatsCards'
-import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart } from '@/components/dashboard/Charts'
+import { StockCategoriaChart, SalidasMensualesChart, ValorCategoriaChart, MermaCategoriaChart, MermaDiariaChart, SkuPorClasificacionChart } from '@/components/dashboard/Charts'
 import { EstadoBadge, ClasificacionBadge } from '@/components/ui/Badge'
 
 function toISODate(d: Date): string {
@@ -178,8 +178,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Merma: anillo por categoría + evolución diaria */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* SKUs por rotación + merma: anillo por categoría + evolución diaria */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="card p-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">SKUs por calificación</h3>
+          <div className="h-48">
+            <SkuPorClasificacionChart data={tabla} />
+          </div>
+        </div>
         <div className="card p-4">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Merma en valor por categoría</h3>
           <div className="h-48">
@@ -210,25 +216,25 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="table-th">SKU</th>
-                  <th className="table-th">Producto</th>
-                  <th className="table-th text-right">Stock</th>
-                  <th className="table-th text-right">Días inv.</th>
-                  <th className="table-th text-right">Reponer</th>
+                  <th className="table-th text-center">SKU</th>
+                  <th className="table-th text-center">Producto</th>
+                  <th className="table-th text-center">Stock</th>
+                  <th className="table-th text-center">Días inv.</th>
+                  <th className="table-th text-center">Reponer</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {alertas.slice(0, 8).map((p: any) => (
                   <tr key={p.producto_id} className="hover:bg-slate-50">
-                    <td className="table-td font-mono text-xs">{p.sku}</td>
-                    <td className="table-td">{p.nombre}</td>
-                    <td className="table-td text-right">
+                    <td className="table-td text-center font-mono text-xs">{p.sku}</td>
+                    <td className="table-td text-center">{p.nombre}</td>
+                    <td className="table-td text-center">
                       {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     </td>
-                    <td className="table-td text-right text-red-500 font-medium">
+                    <td className="table-td text-center text-red-500 font-medium">
                       {p.dias_inventario != null ? `${p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 })}d` : '—'}
                     </td>
-                    <td className="table-td text-right font-semibold text-red-600">
+                    <td className="table-td text-center font-semibold text-red-600">
                       {p.cantidad_reponer?.toLocaleString('es-CL', { maximumFractionDigits: 0 })}
                     </td>
                   </tr>
@@ -353,8 +359,8 @@ function LoadingSkeleton() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
         {[1,2].map(i => <div key={i} className="h-40 bg-white rounded-xl" />)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        {[1,2].map(i => <div key={i} className="h-48 bg-white rounded-xl" />)}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+        {[1,2,3].map(i => <div key={i} className="h-48 bg-white rounded-xl" />)}
       </div>
       <div className="h-72 bg-white rounded-xl" />
     </div>

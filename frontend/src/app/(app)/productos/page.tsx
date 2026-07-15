@@ -155,17 +155,17 @@ export default function ProductosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="table-th w-14">Img</th>
-                <th className="table-th">SKU</th>
-                <th className="table-th">Producto</th>
-                <th className="table-th">Categoría</th>
-                <th className="table-th">Unidad</th>
-                <th className="table-th text-right">CPP</th>
-                <th className="table-th text-right">Stock</th>
-                <th className="table-th text-right">CPD</th>
-                <th className="table-th text-right">Días</th>
-                <th className="table-th">Estado</th>
-                <th className="table-th text-right">Reponer</th>
+                <th className="table-th text-center w-14">Img</th>
+                <th className="table-th text-center">SKU</th>
+                <th className="table-th text-center">Producto</th>
+                <th className="table-th text-center">Categoría</th>
+                <th className="table-th text-center">Unidad</th>
+                <th className="table-th text-center">CPP</th>
+                <th className="table-th text-center">Stock</th>
+                <th className="table-th text-center">CPD</th>
+                <th className="table-th text-center">Días</th>
+                <th className="table-th text-center">Estado</th>
+                <th className="table-th text-center">Reponer</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -188,8 +188,8 @@ export default function ProductosPage() {
               ) : (
                 productos.map((p: any) => (
                   <tr key={p.producto_id} className="hover:bg-slate-50 transition-colors">
-                    <td className="table-td">
-                      <div className="relative group w-10 h-10">
+                    <td className="table-td text-center">
+                      <div className="relative group w-10 h-10 mx-auto">
                         {p.imagen_url ? (
                           <img
                             src={p.imagen_url}
@@ -216,30 +216,30 @@ export default function ProductosPage() {
                         </button>
                       </div>
                     </td>
-                    <td className="table-td font-mono text-xs text-slate-500">{p.sku}</td>
-                    <td className="table-td font-medium text-slate-800">{p.nombre}</td>
-                    <td className="table-td text-slate-500">{p.categoria ?? '—'}</td>
-                    <td className="table-td text-slate-500">{p.unidad_medida}</td>
-                    <td className="table-td text-right text-slate-700">
+                    <td className="table-td text-center font-mono text-xs text-slate-500">{p.sku}</td>
+                    <td className="table-td text-center font-medium text-slate-800">{p.nombre}</td>
+                    <td className="table-td text-center text-slate-500">{p.categoria ?? '—'}</td>
+                    <td className="table-td text-center text-slate-500">{p.unidad_medida}</td>
+                    <td className="table-td text-center text-slate-700">
                       ${p.costo_promedio?.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td className="table-td text-right font-semibold">
+                    <td className="table-td text-center font-semibold">
                       {p.stock_actual?.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                     </td>
-                    <td className="table-td text-right text-slate-400 text-xs">
+                    <td className="table-td text-center text-slate-400 text-xs">
                       {p.consumo_promedio_diario?.toLocaleString('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </td>
-                    <td className="table-td text-right">
+                    <td className="table-td text-center">
                       {p.dias_inventario != null ? (
                         <span className={p.dias_inventario < 45 ? 'text-red-500 font-semibold' : 'text-slate-700'}>
                           {p.dias_inventario.toLocaleString('es-CL', { maximumFractionDigits: 0 })}d
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="table-td">
+                    <td className="table-td text-center">
                       <EstadoBadge estado={p.estado} />
                     </td>
-                    <td className="table-td text-right font-medium text-red-600">
+                    <td className="table-td text-center font-medium text-red-600">
                       {p.cantidad_reponer > 0 ? p.cantidad_reponer.toLocaleString('es-CL', { maximumFractionDigits: 0 }) : '—'}
                     </td>
                   </tr>
