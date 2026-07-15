@@ -41,3 +41,15 @@ export function TipoBadge({ tipo }: { tipo: string }) {
   }
   return <Badge value={tipo.charAt(0).toUpperCase() + tipo.slice(1)} variant={map[tipo] ?? 'default'} />
 }
+
+// Clasificación ABC por rotación: A = alta rotación, B = media, C = baja.
+export function ClasificacionBadge({ clasificacion }: { clasificacion?: string | null }) {
+  if (!clasificacion) return null
+  const map: Record<string, BadgeProps['variant']> = {
+    A: 'success',
+    B: 'warning',
+    C: 'danger',
+    'Sin datos': 'default',
+  }
+  return <Badge value={clasificacion} variant={map[clasificacion] ?? 'default'} />
+}
