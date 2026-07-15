@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { categoriasApi } from '@/lib/api'
+import { useEmpresaNombre } from '@/lib/useEmpresa'
 
 export default function CategoriasPage() {
+  const empresaNombre = useEmpresaNombre()
   const [categorias, setCategorias] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [nombre, setNombre] = useState('')
@@ -44,7 +46,9 @@ export default function CategoriasPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-5">
-      <h1 className="text-lg md:text-xl font-bold text-slate-800">Categorías</h1>
+      <h1 className="text-lg md:text-xl font-bold text-slate-800">
+        Categorías{empresaNombre && <span className="text-slate-400 font-medium"> — {empresaNombre}</span>}
+      </h1>
 
       {/* Formulario */}
       <div className="card">
@@ -66,7 +70,7 @@ export default function CategoriasPage() {
             <tr className="bg-slate-50 border-b border-slate-100">
               <th className="table-th">Nombre</th>
               <th className="table-th">Descripción</th>
-              <th className="table-th w-20"></th>
+              <th className="table-th w-20 text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
