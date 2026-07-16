@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 <th className="table-th text-center">Stock</th>
                 <th className="table-th text-center">CPD</th>
                 <th className="table-th text-center">Rotación</th>
-                <th className="table-th text-center">Clasificación</th>
+                <th className="table-th text-center">Rotación</th>
                 <th className="table-th text-center">Días inv.</th>
                 <th className="table-th text-center">Estado</th>
                 <th className="table-th text-center">Reponer</th>

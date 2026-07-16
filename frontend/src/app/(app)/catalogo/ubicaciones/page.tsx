@@ -303,17 +303,17 @@ export default function UbicacionesPage() {
                   {/* Indicadores grandes: Posiciones, Ocupación, Libres, Ocupadas y Unidades */}
                   {posiciones.length > 0 && (
                     <div className="flex items-center gap-3 flex-wrap">
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-slate-800 leading-none">
+                      <div className="rounded-xl bg-primary-50 border border-primary-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-primary-700 leading-none">
                           {posiciones.length.toLocaleString('es-CL')}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">Posiciones</p>
+                        <p className="text-xs text-primary-600 mt-1">Posiciones</p>
                       </div>
-                      <div className="rounded-xl bg-sky-50 border border-sky-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-sky-700 leading-none">
+                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-amber-700 leading-none">
                           {tasaOcupacion.toLocaleString('es-CL')}%
                         </p>
-                        <p className="text-xs text-sky-600 mt-1">Ocupación</p>
+                        <p className="text-xs text-amber-600 mt-1">Ocupación</p>
                       </div>
                       <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2 min-w-[110px]">
                         <p className="text-2xl md:text-3xl font-bold text-emerald-700 leading-none">
@@ -321,17 +321,17 @@ export default function UbicacionesPage() {
                         </p>
                         <p className="text-xs text-emerald-600 mt-1">Ocupadas</p>
                       </div>
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-amber-700 leading-none">
+                      <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-red-700 leading-none">
                           {conteoPosiciones.libres.toLocaleString('es-CL')}
                         </p>
-                        <p className="text-xs text-amber-600 mt-1">Libres</p>
+                        <p className="text-xs text-red-600 mt-1">Libres</p>
                       </div>
-                      <div className="rounded-xl bg-violet-50 border border-violet-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-violet-700 leading-none">
+                      <div className="rounded-xl bg-cyan-50 border border-cyan-200 px-4 py-2 min-w-[110px]">
+                        <p className="text-2xl md:text-3xl font-bold text-cyan-700 leading-none">
                           {conteoPosiciones.unidadesTotales.toLocaleString('es-CL')}
                         </p>
-                        <p className="text-xs text-violet-600 mt-1">Unidades</p>
+                        <p className="text-xs text-cyan-600 mt-1">Unidades</p>
                       </div>
                     </div>
                   )}

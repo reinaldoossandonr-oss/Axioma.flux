@@ -43,6 +43,31 @@ const TOOLTIP_BASE = {
   bodyFont: { size: 12 },
 }
 
+// Plugin: dibuja el valor de cada barra sobre su extremo superior.
+function barValueLabelPlugin(formatter: (v: number) => string) {
+  return {
+    id: 'barValueLabel',
+    afterDatasetsDraw(chart: any) {
+      const { ctx } = chart
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i)
+        if (meta.hidden) return
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index]
+          if (value == null) return
+          ctx.save()
+          ctx.fillStyle = '#334155'
+          ctx.font = "600 10.5px 'Inter', system-ui, -apple-system, sans-serif"
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'bottom'
+          ctx.fillText(formatter(value), bar.x, bar.y - 4)
+          ctx.restore()
+        })
+      })
+    },
+  }
+}
+
 // ── GRÁFICO 1: Stock por categoría (barras) ──────────────────
 interface StockCategoriaProps {
   data: { categoria: string; stock_total: number; valor_total: number }[]
@@ -60,7 +85,9 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
         backgroundColor: PALETTE.slice(0, data.length),
         borderRadius: 3,
         borderSkipped: false,
-        maxBarThickness: 36,
+        maxBarThickness: 52,
+        categoryPercentage: 0.7,
+        barPercentage: 0.9,
       },
     ],
   }
@@ -68,9 +95,11 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
   return (
     <Bar
       data={chartData}
+      plugins={[barValueLabelPlugin(v => v.toLocaleString('es-CL'))]}
       options={{
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 20 } },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -122,7 +151,9 @@ export function SkuPorClasificacionChart({ data }: SkuPorClasificacionProps) {
         backgroundColor: labels.map(c => COLOR_CLASE_ROTACION[c]),
         borderRadius: 3,
         borderSkipped: false,
-        maxBarThickness: 46,
+        maxBarThickness: 64,
+        categoryPercentage: 0.7,
+        barPercentage: 0.9,
       },
     ],
   }
@@ -130,9 +161,11 @@ export function SkuPorClasificacionChart({ data }: SkuPorClasificacionProps) {
   return (
     <Bar
       data={chartData}
+      plugins={[barValueLabelPlugin(v => `${v} SKU${v === 1 ? '' : 's'}`)]}
       options={{
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { top: 20 } },
         plugins: {
           legend: { display: false },
           tooltip: {

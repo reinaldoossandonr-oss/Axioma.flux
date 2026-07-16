@@ -28,7 +28,6 @@ export default function StatsCards({ resumen }: Props) {
     {
       label: 'Unidades totales',
       value: (resumen.unidades_totales ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 }),
-      subtitle: 'Stock actual, todas las categorías',
       color: 'bg-cyan-600',
       icon: <StackIcon />,
     },
