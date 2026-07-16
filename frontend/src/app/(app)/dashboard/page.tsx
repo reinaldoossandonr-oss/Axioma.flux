@@ -165,13 +165,13 @@ export default function DashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Stock por categoría</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Stock por categoría</h3>
           <div className="h-40">
             <StockCategoriaChart data={stockCat} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Salidas de inventario</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Salidas de inventario</h3>
           <div className="h-40">
             <SalidasMensualesChart data={salidas} />
           </div>
@@ -181,19 +181,19 @@ export default function DashboardPage() {
       {/* SKUs por rotación + merma: anillo por categoría + evolución diaria */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">SKUs por calificación</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">SKUs por calificación</h3>
           <div className="h-48">
             <SkuPorClasificacionChart data={tabla} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Merma en valor por categoría</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Merma en valor por categoría</h3>
           <div className="h-48">
             <MermaCategoriaChart data={mermaCat} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Evolución de la merma</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Evolución de la merma</h3>
           <div className="h-48">
             <MermaDiariaChart data={mermaDia} />
           </div>

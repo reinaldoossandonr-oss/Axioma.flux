@@ -62,14 +62,14 @@ export default function StatsCards({ resumen }: Props) {
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {stats.map((stat) => (
         <div key={stat.label} className="card flex items-center gap-4">
           <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
             {stat.icon}
           </div>
           <div className="min-w-0">
-            <p className="text-2xl font-bold text-slate-800 truncate">{stat.value}</p>
+            <p className="text-2xl font-bold text-slate-800 truncate" title={String(stat.value)}>{stat.value}</p>
             <p className="text-sm text-slate-500 leading-tight">{stat.label}</p>
             {stat.subtitle && (
               <p className="text-xs text-slate-500 mt-0.5">{stat.subtitle}</p>
