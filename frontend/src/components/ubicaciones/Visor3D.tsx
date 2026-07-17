@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useMemo, useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Grid, Html, useGLTF, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -214,7 +214,64 @@ function BinsInteractivos({
   )
 }
 
-function Modelo(props: Visor3DProps) {
+// La cámara por defecto mira a (0,0,0). Si el modelo subido no está
+// centrado en el origen del mundo (lo más común: cada diseño se modela en
+// su propia posición), el visor termina apuntando a un punto vacío y los
+// racks quedan arrinconados en una esquina del encuadre, con mucho piso
+// "muerto" alrededor. Este componente NO cambia el zoom ni la distancia
+// (para no repetir los intentos anteriores de "adivinar" la escala): solo
+// desplaza la cámara y el punto de mira para que apunten al centro real de
+// las posiciones, manteniendo el mismo ángulo y la misma distancia relativa
+// que el encuadre por defecto.
+function CentrarVista({
+  escena,
+  posiciones,
+  controlsRef,
+  onCentro,
+}: {
+  escena: THREE.Object3D
+  posiciones: PosicionVisor3D[]
+  controlsRef: React.MutableRefObject<any>
+  onCentro: (centro: [number, number, number]) => void
+}) {
+  const { camera } = useThree()
+
+  useEffect(() => {
+    escena.updateMatrixWorld(true)
+
+    const box = new THREE.Box3()
+    let coincidencias = 0
+    posiciones.forEach(pos => {
+      const nodo = escena.getObjectByName(pos.codigo)
+      if (nodo) {
+        box.expandByObject(nodo)
+        coincidencias++
+      }
+    })
+    // Si ninguna posición coincide por nombre, centramos en el modelo
+    // completo (mejor que dejar la cámara mirando al vacío).
+    if (coincidencias === 0) box.setFromObject(escena)
+    if (box.isEmpty()) return
+
+    const centro = box.getCenter(new THREE.Vector3())
+    const offset = new THREE.Vector3(...CAMARA_INICIAL)
+
+    camera.position.copy(centro.clone().add(offset))
+    camera.lookAt(centro)
+
+    if (controlsRef.current) {
+      controlsRef.current.target.copy(centro)
+      controlsRef.current.update()
+    }
+
+    onCentro([centro.x, centro.y, centro.z])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escena, posiciones])
+
+  return null
+}
+
+function Modelo(props: Visor3DProps & { controlsRef: React.MutableRefObject<any>; onCentro: (centro: [number, number, number]) => void }) {
   const { scene } = useGLTF(props.disenoUrl)
   // Clonamos para no mutar el objeto cacheado por useGLTF entre renders/instancias.
   const escena = useMemo(() => scene.clone(true), [scene])
@@ -222,6 +279,7 @@ function Modelo(props: Visor3DProps) {
   return (
     <>
       <primitive object={escena} />
+      <CentrarVista escena={escena} posiciones={props.posiciones} controlsRef={props.controlsRef} onCentro={props.onCentro} />
       <BinsInteractivos
         scene={escena}
         posiciones={props.posiciones}
@@ -252,6 +310,7 @@ function Cargando() {
 
 export default function Visor3D(props: Visor3DProps) {
   const controlsRef = useRef<any>(null)
+  const [centro, setCentro] = useState<[number, number, number]>([0, 0, 0])
 
   // En vez de adivinar matemáticamente el encuadre "perfecto" (que depende
   // de la escala y forma de cada modelo subido, y es imposible de acertar a
@@ -278,8 +337,8 @@ export default function Visor3D(props: Visor3DProps) {
     const controls = controlsRef.current
     if (!controls) return
     const camera = controls.object as THREE.PerspectiveCamera
-    camera.position.set(...CAMARA_INICIAL)
-    controls.target.set(0, 0, 0)
+    camera.position.set(centro[0] + CAMARA_INICIAL[0], centro[1] + CAMARA_INICIAL[1], centro[2] + CAMARA_INICIAL[2])
+    controls.target.set(...centro)
     controls.update()
   }
 
@@ -304,12 +363,12 @@ export default function Visor3D(props: Visor3DProps) {
           shadow-camera-bottom={-12}
         />
         <Suspense fallback={<Cargando />}>
-          <Modelo {...props} />
+          <Modelo {...props} controlsRef={controlsRef} onCentro={setCentro} />
           <Environment preset="city" />
         </Suspense>
-        <ContactShadows position={[0, 0.001, 0]} opacity={0.4} scale={22} blur={2.2} far={10} />
+        <ContactShadows position={[centro[0], 0.001, centro[2]]} opacity={0.4} scale={22} blur={2.2} far={10} />
         <Grid
-          position={[0, 0, 0]}
+          position={[centro[0], 0, centro[2]]}
           args={[10, 10]}
           cellSize={1}
           cellThickness={0.5}
