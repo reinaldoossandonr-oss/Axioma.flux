@@ -5,7 +5,15 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Grid, Html, useGLTF, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
-const CAMARA_INICIAL: [number, number, number] = [9, 7.5, 11]
+// Ángulo de elevación de la cámara por defecto. El valor anterior (9, 7.5, 11)
+// mira casi "al ras del piso" (~28° sobre la horizontal): a ese ángulo tan
+// rasante, el plano del suelo ocupa la mayor parte del encuadre por simple
+// perspectiva (foreshortening), dejando los racks apretados en una franja
+// angosta arriba — es la causa real del "espacio gris sin usar" que se veía
+// abajo, sin importar cuánto se recentre o acerque la cámara. Con un ángulo
+// más picado (~55° sobre la horizontal, más "vista de pájaro") se ve mucho
+// menos piso vacío y los racks llenan el encuadre.
+const CAMARA_INICIAL: [number, number, number] = [6.5, 13, 6.5]
 
 export interface PosicionVisor3D {
   id: string
