@@ -52,7 +52,7 @@ export default function CategoriasPage() {
 
       {/* Formulario */}
       <div className="card">
-        <h2 className="font-semibold text-slate-700 mb-4">Nueva categoría</h2>
+        <h2 className="font-bold text-slate-700 mb-4">Nueva categoría</h2>
         <form onSubmit={handleCrear} className="flex flex-col sm:flex-row gap-3">
           <input className="input flex-1" placeholder="Nombre *" value={nombre} onChange={e => setNombre(e.target.value)} required />
           <input className="input flex-1" placeholder="Descripción (opcional)" value={descripcion} onChange={e => setDescripcion(e.target.value)} />

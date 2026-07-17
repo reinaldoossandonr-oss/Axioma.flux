@@ -172,7 +172,7 @@ export default function UbicacionesPage() {
   const TIPOS = ['almacen', 'bodega', 'planta', 'tienda', 'externo']
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col gap-4 md:gap-5 overflow-hidden">
+    <div className="p-4 md:p-6 min-h-full flex flex-col gap-4 md:gap-5">
       <div className="flex items-center justify-between gap-3 flex-shrink-0">
         <div>
           <h1 className="text-lg md:text-xl font-bold text-slate-800">
@@ -193,7 +193,7 @@ export default function UbicacionesPage() {
       {/* Form nueva ubicación */}
       {mostrarFormUbic && (
         <div className="card flex-shrink-0">
-          <h2 className="font-semibold text-slate-700 mb-4">Nueva ubicación</h2>
+          <h2 className="font-bold text-slate-700 mb-4">Nueva ubicación</h2>
           <form onSubmit={handleCrearUbicacion} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -248,7 +248,7 @@ export default function UbicacionesPage() {
       <div className="flex-1 min-h-0 flex flex-col gap-4 md:gap-5">
         {/* Barra horizontal de ubicaciones: chips en vez de sidebar vertical, para no dejar espacio en blanco cuando hay pocas ubicaciones */}
         <div className="card flex-shrink-0">
-          <h2 className="font-semibold text-slate-700 mb-3">Ubicaciones</h2>
+          <h2 className="font-bold text-slate-700 mb-3">Ubicaciones</h2>
           {loadingUbic ? (
             <div className="flex gap-2 animate-pulse">
               {[1, 2, 3].map(i => <div key={i} className="h-9 w-32 bg-slate-100 rounded-lg flex-shrink-0" />)}
@@ -294,45 +294,20 @@ export default function UbicacionesPage() {
               <div className="flex items-start justify-between mb-4 flex-wrap gap-3 flex-shrink-0">
                 <div className="flex items-center gap-4 flex-wrap">
                   <div>
-                    <h2 className="font-semibold text-slate-700">
+                    <h2 className="font-bold text-slate-700">
                       Posiciones — {seleccionada.nombre}
                     </h2>
                     <p className="text-xs text-slate-500">Zona-Rack-Nivel</p>
                   </div>
 
-                  {/* Indicadores grandes: Posiciones, Ocupación, Libres, Ocupadas y Unidades */}
+                  {/* Indicadores: ícono + valor + barra de progreso en Ocupación, mismo lenguaje visual que StatsCards del dashboard */}
                   {posiciones.length > 0 && (
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="rounded-xl bg-primary-50 border border-primary-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-primary-700 leading-none">
-                          {posiciones.length.toLocaleString('es-CL')}
-                        </p>
-                        <p className="text-xs text-primary-600 mt-1">Posiciones</p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-amber-700 leading-none">
-                          {tasaOcupacion.toLocaleString('es-CL')}%
-                        </p>
-                        <p className="text-xs text-amber-600 mt-1">Ocupación</p>
-                      </div>
-                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-emerald-700 leading-none">
-                          {conteoPosiciones.ocupadas.toLocaleString('es-CL')}
-                        </p>
-                        <p className="text-xs text-emerald-600 mt-1">Ocupadas</p>
-                      </div>
-                      <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-red-700 leading-none">
-                          {conteoPosiciones.libres.toLocaleString('es-CL')}
-                        </p>
-                        <p className="text-xs text-red-600 mt-1">Libres</p>
-                      </div>
-                      <div className="rounded-xl bg-cyan-50 border border-cyan-200 px-4 py-2 min-w-[110px]">
-                        <p className="text-2xl md:text-3xl font-bold text-cyan-700 leading-none">
-                          {conteoPosiciones.unidadesTotales.toLocaleString('es-CL')}
-                        </p>
-                        <p className="text-xs text-cyan-600 mt-1">Unidades</p>
-                      </div>
+                    <div className="flex items-stretch gap-2.5 flex-wrap">
+                      <IndicadorCard icon={<IconGrid />} color="bg-primary" value={posiciones.length.toLocaleString('es-CL')} label="Posiciones" />
+                      <IndicadorCard icon={<IconGauge />} color="bg-amber-500" value={`${tasaOcupacion.toLocaleString('es-CL')}%`} label="Ocupación" progreso={tasaOcupacion} />
+                      <IndicadorCard icon={<IconCheck />} color="bg-emerald-500" value={conteoPosiciones.ocupadas.toLocaleString('es-CL')} label="Ocupadas" />
+                      <IndicadorCard icon={<IconFrame />} color="bg-red-500" value={conteoPosiciones.libres.toLocaleString('es-CL')} label="Libres" />
+                      <IndicadorCard icon={<IconStack />} color="bg-cyan-600" value={conteoPosiciones.unidadesTotales.toLocaleString('es-CL')} label="Unidades" />
                     </div>
                   )}
                 </div>
@@ -561,5 +536,82 @@ function LeyendaItem({ color, label }: { color: string; label: string }) {
       <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
       {label}
     </span>
+  )
+}
+
+function IndicadorCard({
+  icon,
+  color,
+  value,
+  label,
+  progreso,
+}: {
+  icon: React.ReactNode
+  color: string
+  value: string
+  label: string
+  progreso?: number
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-white border border-slate-200 shadow-sm px-3.5 py-2.5 min-w-[136px]">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white flex-shrink-0 ${color}`}>
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xl font-bold text-slate-800 leading-none">{value}</p>
+        <p className="text-xs text-slate-500 mt-1 leading-none">{label}</p>
+        {progreso != null && (
+          <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden" title={`${progreso}% ocupado`}>
+            <div
+              className={`h-full rounded-full ${color} transition-all`}
+              style={{ width: `${Math.min(100, Math.max(0, progreso))}%` }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function IconGrid() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <rect x="3" y="3" width="7" height="7" rx="1.2" strokeWidth={2} />
+      <rect x="14" y="3" width="7" height="7" rx="1.2" strokeWidth={2} />
+      <rect x="3" y="14" width="7" height="7" rx="1.2" strokeWidth={2} />
+      <rect x="14" y="14" width="7" height="7" rx="1.2" strokeWidth={2} />
+    </svg>
+  )
+}
+function IconGauge() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M3 21V10l9-6 9 6v11h-6v-7H9v7H3z" />
+    </svg>
+  )
+}
+function IconCheck() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+function IconFrame() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2m8-16h2a2 2 0 012 2v2m-4 12h2a2 2 0 002-2v-2" />
+    </svg>
+  )
+}
+function IconStack() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
   )
 }

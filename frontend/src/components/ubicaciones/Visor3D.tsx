@@ -43,7 +43,6 @@ interface Visor3DProps {
 
 export const COLOR_VACIO = '#94a3b8'      // slate-400
 export const COLOR_CON_STOCK = '#1AABF0'  // azul de marca
-const COLOR_MATCH_GLOW = '#38BDF8' // sky-400, brillo de coincidencia (nunca reemplaza el color semántico)
 const COLOR_HOVER_EMISSIVE = '#1AABF0'
 
 // Mismos tonos que el badge de clasificación en el resto del dashboard.
@@ -138,8 +137,12 @@ function BinsInteractivos({
         const opacity = 1
 
         if (filtroActivo && coincideFiltro) {
-          emissive = COLOR_MATCH_GLOW
-          emissiveIntensity = 0.6
+          // Brillo de coincidencia: usa el MISMO tono del color base (ocupación o
+          // rotación), solo con más luminosidad. Así resalta sin teñir ni alterar
+          // el color semántico (antes usaba un celeste fijo que "ensuciaba" los
+          // colores de rotación al combinarse con verde/ámbar/rojo).
+          emissive = color
+          emissiveIntensity = 0.55
         }
         if (isHover) {
           emissive = COLOR_HOVER_EMISSIVE
