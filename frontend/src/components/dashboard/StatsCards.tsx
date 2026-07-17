@@ -1,7 +1,8 @@
 interface Stat {
   label: string
   value: string | number
-  colorText: string
+  subtitle?: string
+  color: string
   icon: React.ReactNode
 }
 
@@ -21,60 +22,61 @@ export default function StatsCards({ resumen }: Props) {
     {
       label: 'Productos activos',
       value: resumen.total_productos.toLocaleString('es-CL'),
-      colorText: 'text-primary',
+      color: 'bg-primary',
       icon: <BoxIcon />,
     },
     {
       label: 'Unidades totales',
       value: (resumen.unidades_totales ?? 0).toLocaleString('es-CL', { maximumFractionDigits: 0 }),
-      colorText: 'text-cyan-600',
+      color: 'bg-cyan-600',
       icon: <StackIcon />,
     },
     {
       label: 'Requieren reposición',
       value: resumen.productos_a_reponer.toLocaleString('es-CL'),
-      colorText: 'text-red-500',
+      subtitle: 'Menos de 45 días de stock',
+      color: 'bg-red-500',
       icon: <AlertIcon />,
     },
     {
       label: 'Valor inventario',
       value: `$${resumen.valor_inventario_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
-      colorText: 'text-emerald-500',
+      subtitle: 'A costo promedio (CPP)',
+      color: 'bg-emerald-500',
       icon: <ChartIcon />,
     },
     {
       label: 'Ocupación del almacén',
       value: `${resumen.tasa_ocupacion_almacen}%`,
-      colorText: 'text-amber-500',
+      subtitle: 'Posiciones con stock',
+      color: 'bg-amber-500',
       icon: <WarehouseIcon />,
     },
     {
       label: 'Merma en valor',
       value: `$${resumen.merma_valor_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
-      colorText: 'text-rose-600',
+      subtitle: 'Acumulado histórico, a CPP',
+      color: 'bg-rose-600',
       icon: <TrashIcon />,
     },
   ]
 
   return (
-    <div className="card p-1.5 sm:p-2">
-      <div className="flex flex-wrap divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
-        {stats.map((stat) => (
-          <div key={stat.label} className="flex items-center gap-3 px-4 sm:px-5 py-3 min-w-0">
-            <div className={`flex-shrink-0 ${stat.colorText}`}>
-              {stat.icon}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xl font-bold text-slate-800 leading-none truncate" title={String(stat.value)}>
-                {stat.value}
-              </p>
-              <p className="text-xs text-slate-500 mt-1.5 leading-tight truncate">
-                {stat.label}
-              </p>
-            </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {stats.map((stat) => (
+        <div key={stat.label} className="card flex items-center gap-4">
+          <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
+            {stat.icon}
           </div>
-        ))}
-      </div>
+          <div className="min-w-0">
+            <p className="text-2xl font-bold text-slate-800 truncate" title={String(stat.value)}>{stat.value}</p>
+            <p className="text-sm text-slate-500 leading-tight">{stat.label}</p>
+            {stat.subtitle && (
+              <p className="text-xs text-slate-500 mt-0.5">{stat.subtitle}</p>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

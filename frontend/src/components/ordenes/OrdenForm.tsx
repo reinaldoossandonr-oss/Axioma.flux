@@ -176,7 +176,7 @@ export default function OrdenForm() {
     <div className="space-y-5">
       {/* ── Cabecera ── */}
       <div className="card">
-        <h2 className="font-bold text-slate-700 mb-4">Datos de la orden</h2>
+        <h2 className="font-semibold text-slate-700 mb-4">Datos de la orden</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="label">Tipo de movimiento *</label>
@@ -224,7 +224,7 @@ export default function OrdenForm() {
 
       {/* ── Buscador de productos ── */}
       <div className="card">
-        <h2 className="font-bold text-slate-700 mb-3">Agregar productos</h2>
+        <h2 className="font-semibold text-slate-700 mb-3">Agregar productos</h2>
         <div className="relative">
           <input
             ref={searchRef}

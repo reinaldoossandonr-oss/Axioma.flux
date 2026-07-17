@@ -165,13 +165,13 @@ export default function DashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-4">
-          <h3 className="text-sm font-bold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Stock por categoría</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Stock por categoría</h3>
           <div className="h-40">
             <StockCategoriaChart data={stockCat} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-sm font-bold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Salidas de inventario</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Salidas de inventario</h3>
           <div className="h-40">
             <SalidasMensualesChart data={salidas} />
           </div>
@@ -181,19 +181,19 @@ export default function DashboardPage() {
       {/* SKUs por rotación + merma: anillo por categoría + evolución diaria */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card p-4">
-          <h3 className="text-sm font-bold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">SKUs por calificación</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">SKUs por calificación</h3>
           <div className="h-48">
             <SkuPorClasificacionChart data={tabla} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-sm font-bold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Merma en valor por categoría</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Merma en valor por categoría</h3>
           <div className="h-48">
             <MermaCategoriaChart data={mermaCat} />
           </div>
         </div>
         <div className="card p-4">
-          <h3 className="text-sm font-bold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Evolución de la merma</h3>
+          <h3 className="text-sm font-semibold text-slate-800 border-l-4 border-primary pl-2.5 mb-3">Evolución de la merma</h3>
           <div className="h-48">
             <MermaDiariaChart data={mermaDia} />
           </div>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
       {alertas.length > 0 && (
         <div className="card border-l-4 border-l-red-400">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-slate-700 flex items-center gap-2">
+            <h3 className="font-semibold text-slate-700 flex items-center gap-2">
               <span className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
               Productos a Reponer ({alertas.length})
             </h3>
@@ -248,7 +248,7 @@ export default function DashboardPage() {
       {/* Tabla principal */}
       <div className="card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-700">Inventario General</h3>
+          <h3 className="font-semibold text-slate-700">Inventario General</h3>
           <Link href="/productos" className="btn-primary text-sm py-1.5 px-3">
             Gestionar productos
           </Link>

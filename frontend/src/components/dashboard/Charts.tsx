@@ -14,7 +14,7 @@ ChartJS.register(
 
 // Tipografía y tono neutro consistentes en todos los gráficos
 ChartJS.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif"
-ChartJS.defaults.font.size = 12
+ChartJS.defaults.font.size = 11
 ChartJS.defaults.color = '#64748B'
 
 const PRIMARY = '#0E87BF'
@@ -39,8 +39,8 @@ const TOOLTIP_BASE = {
   cornerRadius: 6,
   displayColors: true,
   boxPadding: 4,
-  titleFont: { size: 12.5, weight: 500 as const },
-  bodyFont: { size: 12.5 },
+  titleFont: { size: 12, weight: 500 as const },
+  bodyFont: { size: 12 },
 }
 
 // Plugin: dibuja el valor de cada barra sobre su extremo superior.
@@ -57,7 +57,7 @@ function barValueLabelPlugin(formatter: (v: number) => string) {
           if (value == null) return
           ctx.save()
           ctx.fillStyle = '#334155'
-          ctx.font = "600 11.5px 'Inter', system-ui, -apple-system, sans-serif"
+          ctx.font = "600 10.5px 'Inter', system-ui, -apple-system, sans-serif"
           ctx.textAlign = 'center'
           ctx.textBaseline = 'bottom'
           ctx.fillText(formatter(value), bar.x, bar.y - 4)
@@ -110,8 +110,8 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
-          y: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10.5 } } },
         },
       }}
     />
@@ -176,8 +176,8 @@ export function SkuPorClasificacionChart({ data }: SkuPorClasificacionProps) {
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
-          y: { grid: { display: false }, ticks: { font: { size: 11.5 }, precision: 0 } },
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
+          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10.5 }, precision: 0 } },
         },
       }}
     />
@@ -234,11 +234,11 @@ export function SalidasMensualesChart({ data }: SalidasProps) {
           },
         },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
+          x: { grid: { display: false }, ticks: { font: { size: 10.5 } } },
           y: {
-            grid: { display: false },
+            grid: { color: '#F1F5F9' },
             ticks: {
-              font: { size: 11.5 },
+              font: { size: 10.5 },
               maxTicksLimit: 5,
               callback: v => `$${Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
             },
@@ -279,7 +279,7 @@ export function ValorCategoriaChart({ data }: ValorCategoriaProps) {
           legend: {
             position: 'right',
             labels: {
-              font: { size: 11.5 },
+              font: { size: 10.5 },
               color: '#475569',
               padding: 10,
               boxWidth: 8,
@@ -325,7 +325,7 @@ const centerTextPlugin = {
     ctx.font = "600 18px 'Inter', system-ui, -apple-system, sans-serif"
     ctx.fillText(`$${total.toLocaleString('es-CL', { maximumFractionDigits: 0, notation: 'compact' })}`, cx, cy - 8)
     ctx.fillStyle = '#94A3B8'
-    ctx.font = "500 10.5px 'Inter', system-ui, -apple-system, sans-serif"
+    ctx.font = "500 10px 'Inter', system-ui, -apple-system, sans-serif"
     ctx.fillText('Merma total', cx, cy + 12)
     ctx.restore()
   },
@@ -359,7 +359,7 @@ export function MermaCategoriaChart({ data }: MermaCategoriaProps) {
           legend: {
             position: 'right',
             labels: {
-              font: { size: 11.5 },
+              font: { size: 10.5 },
               color: '#475569',
               padding: 10,
               boxWidth: 8,
@@ -434,12 +434,12 @@ export function MermaDiariaChart({ data }: MermaDiariaProps) {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { font: { size: 11 }, maxTicksLimit: 8, autoSkip: true },
+            ticks: { font: { size: 10 }, maxTicksLimit: 8, autoSkip: true },
           },
           y: {
-            grid: { display: false },
+            grid: { color: '#F1F5F9' },
             ticks: {
-              font: { size: 11.5 },
+              font: { size: 10.5 },
               maxTicksLimit: 5,
               callback: v => `$${Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
             },
