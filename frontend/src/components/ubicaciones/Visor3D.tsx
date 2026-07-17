@@ -227,17 +227,39 @@ interface Encuadre {
 // que se carga un diseño nuevo.
 function AutoEncuadre({
   escena,
+  posiciones,
   controlsRef,
   onEncuadre,
 }: {
   escena: THREE.Object3D
+  posiciones: PosicionVisor3D[]
   controlsRef: React.MutableRefObject<any>
   onEncuadre: (e: Encuadre) => void
 }) {
   const { camera } = useThree()
 
   useEffect(() => {
-    const box = new THREE.Box3().setFromObject(escena)
+    escena.updateMatrixWorld(true)
+
+    // Encuadramos usando solo las posiciones (los racks/bins reales), no el
+    // modelo completo: muchos diseños incluyen piso, paredes o el cascarón
+    // de la bodega, que suele ser mucho más grande que el área de racks. Si
+    // se encuadra el modelo entero, los racks terminan viéndose diminutos en
+    // una esquina con todo ese piso/pared vacíos ocupando el resto. Si no se
+    // logra emparejar ninguna posición por nombre, usamos el modelo completo
+    // como respaldo.
+    const box = new THREE.Box3()
+    let coincidencias = 0
+    posiciones.forEach(pos => {
+      const nodo = escena.getObjectByName(pos.codigo)
+      if (nodo) {
+        box.expandByObject(nodo)
+        coincidencias++
+      }
+    })
+    if (coincidencias === 0) {
+      box.setFromObject(escena)
+    }
     if (box.isEmpty()) return
 
     const centro = box.getCenter(new THREE.Vector3())
@@ -300,7 +322,7 @@ function AutoEncuadre({
     const radioReporte = Math.max(mitadAncho, mitadAlto, tamano.length() / 2)
     onEncuadre({ centro: [centro.x, centro.y, centro.z], radio: radioReporte, pisoY: box.min.y })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [escena])
+  }, [escena, posiciones])
 
   return null
 }
@@ -313,7 +335,7 @@ function Modelo(props: Visor3DProps & { controlsRef: React.MutableRefObject<any>
   return (
     <>
       <primitive object={escena} />
-      <AutoEncuadre escena={escena} controlsRef={props.controlsRef} onEncuadre={props.onEncuadre} />
+      <AutoEncuadre escena={escena} posiciones={props.posiciones} controlsRef={props.controlsRef} onEncuadre={props.onEncuadre} />
       <BinsInteractivos
         scene={escena}
         posiciones={props.posiciones}
