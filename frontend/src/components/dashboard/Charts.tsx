@@ -111,7 +111,7 @@ export function StockCategoriaChart({ data }: StockCategoriaProps) {
         },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
-          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 11.5 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
         },
       }}
     />
@@ -177,7 +177,7 @@ export function SkuPorClasificacionChart({ data }: SkuPorClasificacionProps) {
         },
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
-          y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 11.5 }, precision: 0 } },
+          y: { grid: { display: false }, ticks: { font: { size: 11.5 }, precision: 0 } },
         },
       }}
     />
@@ -236,7 +236,7 @@ export function SalidasMensualesChart({ data }: SalidasProps) {
         scales: {
           x: { grid: { display: false }, ticks: { font: { size: 11.5 } } },
           y: {
-            grid: { color: '#F1F5F9' },
+            grid: { display: false },
             ticks: {
               font: { size: 11.5 },
               maxTicksLimit: 5,
@@ -437,7 +437,7 @@ export function MermaDiariaChart({ data }: MermaDiariaProps) {
             ticks: { font: { size: 11 }, maxTicksLimit: 8, autoSkip: true },
           },
           y: {
-            grid: { color: '#F1F5F9' },
+            grid: { display: false },
             ticks: {
               font: { size: 11.5 },
               maxTicksLimit: 5,

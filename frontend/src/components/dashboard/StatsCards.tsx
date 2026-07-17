@@ -1,7 +1,6 @@
 interface Stat {
   label: string
   value: string | number
-  subtitle?: string
   colorText: string
   icon: React.ReactNode
 }
@@ -34,28 +33,24 @@ export default function StatsCards({ resumen }: Props) {
     {
       label: 'Requieren reposición',
       value: resumen.productos_a_reponer.toLocaleString('es-CL'),
-      subtitle: 'Menos de 45 días de stock',
       colorText: 'text-red-500',
       icon: <AlertIcon />,
     },
     {
       label: 'Valor inventario',
       value: `$${resumen.valor_inventario_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
-      subtitle: 'A costo promedio (CPP)',
       colorText: 'text-emerald-500',
       icon: <ChartIcon />,
     },
     {
       label: 'Ocupación del almacén',
       value: `${resumen.tasa_ocupacion_almacen}%`,
-      subtitle: 'Posiciones con stock',
       colorText: 'text-amber-500',
       icon: <WarehouseIcon />,
     },
     {
       label: 'Merma en valor',
       value: `$${resumen.merma_valor_total.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`,
-      subtitle: 'Acumulado histórico, a CPP',
       colorText: 'text-rose-600',
       icon: <TrashIcon />,
     },
@@ -75,12 +70,6 @@ export default function StatsCards({ resumen }: Props) {
               </p>
               <p className="text-xs text-slate-500 mt-1.5 leading-tight truncate">
                 {stat.label}
-                {stat.subtitle && (
-                  <>
-                    <span className="text-slate-300 mx-1">·</span>
-                    <span className="text-slate-400">{stat.subtitle}</span>
-                  </>
-                )}
               </p>
             </div>
           </div>

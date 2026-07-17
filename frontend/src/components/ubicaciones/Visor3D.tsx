@@ -240,15 +240,26 @@ function AutoEncuadre({
     const box = new THREE.Box3().setFromObject(escena)
     if (box.isEmpty()) return
 
-    const tamano = box.getSize(new THREE.Vector3())
-    const centro = box.getCenter(new THREE.Vector3())
-    const radio = Math.max(tamano.x, tamano.y, tamano.z, 1)
+    // Usamos la esfera envolvente (mitad de la diagonal 3D) en vez del eje
+    // más largo del box: al ver el modelo desde un ángulo isométrico, lo que
+    // hay que encuadrar es la diagonal completa (ancho + profundidad a la
+    // vez), no solo un eje.
+    const esfera = box.getBoundingSphere(new THREE.Sphere())
+    const centro = esfera.center
+    const radioEsfera = Math.max(esfera.radius, 0.5)
 
     const persp = camera as THREE.PerspectiveCamera
-    const fov = persp.fov ?? 42
-    // Distancia necesaria para que el modelo completo entre en el encuadre,
-    // con un margen de ~35% para que no quede pegado a los bordes.
-    const distancia = (radio / 2 / Math.tan((fov * Math.PI) / 360)) * 1.7
+    const aspect = persp.aspect || 1
+    const vFov = (persp.fov * Math.PI) / 180
+    // El FOV horizontal depende del aspect ratio real del panel. Si no se
+    // considera, un panel ancho y bajo (como el visor 3D, que ocupa casi
+    // todo el ancho de la pantalla) hace que la cámara se aleje muchísimo
+    // más de lo necesario para "encajar" el modelo, dejándolo diminuto y
+    // arrinconado arriba, con todo el resto del panel vacío.
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
+    const fovLimitante = Math.min(vFov, hFov)
+    // Margen de ~20% para que el modelo no quede pegado a los bordes.
+    const distancia = (radioEsfera / Math.sin(fovLimitante / 2)) * 1.2
 
     const direccion = new THREE.Vector3(9, 7.5, 11).normalize()
     camera.position.copy(centro.clone().add(direccion.multiplyScalar(distancia)))
@@ -264,7 +275,7 @@ function AutoEncuadre({
       controlsRef.current.update()
     }
 
-    onEncuadre({ centro: [centro.x, centro.y, centro.z], radio, pisoY: box.min.y })
+    onEncuadre({ centro: [centro.x, centro.y, centro.z], radio: radioEsfera, pisoY: box.min.y })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escena])
 
