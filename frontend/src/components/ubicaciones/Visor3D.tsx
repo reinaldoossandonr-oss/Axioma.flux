@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, Grid, Html, useGLTF, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -212,7 +212,66 @@ function BinsInteractivos({
   )
 }
 
-function Modelo(props: Visor3DProps) {
+interface Encuadre {
+  centro: [number, number, number]
+  radio: number
+  pisoY: number
+}
+
+// Ajusta automáticamente cámara + controles + piso al tamaño real del modelo
+// cargado. Antes la cámara usaba una posición fija pensada para un modelo de
+// referencia: si el diseño subido por el usuario tiene otra escala o su
+// origen no está centrado en (0,0,0), el modelo terminaba diminuto, cortado
+// o desplazado hacia una esquina del canvas (dejando la mayor parte del
+// espacio vacío). Este componente centra la vista en el modelo real cada vez
+// que se carga un diseño nuevo.
+function AutoEncuadre({
+  escena,
+  controlsRef,
+  onEncuadre,
+}: {
+  escena: THREE.Object3D
+  controlsRef: React.MutableRefObject<any>
+  onEncuadre: (e: Encuadre) => void
+}) {
+  const { camera } = useThree()
+
+  useEffect(() => {
+    const box = new THREE.Box3().setFromObject(escena)
+    if (box.isEmpty()) return
+
+    const tamano = box.getSize(new THREE.Vector3())
+    const centro = box.getCenter(new THREE.Vector3())
+    const radio = Math.max(tamano.x, tamano.y, tamano.z, 1)
+
+    const persp = camera as THREE.PerspectiveCamera
+    const fov = persp.fov ?? 42
+    // Distancia necesaria para que el modelo completo entre en el encuadre,
+    // con un margen de ~35% para que no quede pegado a los bordes.
+    const distancia = (radio / 2 / Math.tan((fov * Math.PI) / 360)) * 1.7
+
+    const direccion = new THREE.Vector3(9, 7.5, 11).normalize()
+    camera.position.copy(centro.clone().add(direccion.multiplyScalar(distancia)))
+    persp.near = Math.max(distancia / 100, 0.01)
+    persp.far = distancia * 20
+    persp.updateProjectionMatrix()
+    camera.lookAt(centro)
+
+    if (controlsRef.current) {
+      controlsRef.current.target.copy(centro)
+      controlsRef.current.minDistance = Math.max(distancia * 0.12, 0.5)
+      controlsRef.current.maxDistance = distancia * 4
+      controlsRef.current.update()
+    }
+
+    onEncuadre({ centro: [centro.x, centro.y, centro.z], radio, pisoY: box.min.y })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escena])
+
+  return null
+}
+
+function Modelo(props: Visor3DProps & { controlsRef: React.MutableRefObject<any>; onEncuadre: (e: Encuadre) => void }) {
   const { scene } = useGLTF(props.disenoUrl)
   // Clonamos para no mutar el objeto cacheado por useGLTF entre renders/instancias.
   const escena = useMemo(() => scene.clone(true), [scene])
@@ -220,6 +279,7 @@ function Modelo(props: Visor3DProps) {
   return (
     <>
       <primitive object={escena} />
+      <AutoEncuadre escena={escena} controlsRef={props.controlsRef} onEncuadre={props.onEncuadre} />
       <BinsInteractivos
         scene={escena}
         posiciones={props.posiciones}
@@ -249,6 +309,17 @@ function Cargando() {
 }
 
 export default function Visor3D(props: Visor3DProps) {
+  const controlsRef = useRef<any>(null)
+  const [encuadre, setEncuadre] = useState<Encuadre | null>(null)
+
+  // El piso (Grid) y la sombra de contacto se reposicionan bajo el modelo
+  // real una vez que se calcula su encuadre, en vez de asumir que el modelo
+  // siempre está centrado en el origen.
+  const centroPiso: [number, number, number] = encuadre
+    ? [encuadre.centro[0], encuadre.pisoY, encuadre.centro[2]]
+    : [0, 0, 0]
+  const escalaPiso = encuadre ? Math.max(encuadre.radio * 2.2, 10) : 22
+
   return (
     <div className="relative w-full h-full min-h-[360px] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
       <Canvas
@@ -270,12 +341,12 @@ export default function Visor3D(props: Visor3DProps) {
           shadow-camera-bottom={-12}
         />
         <Suspense fallback={<Cargando />}>
-          <Modelo {...props} />
+          <Modelo {...props} controlsRef={controlsRef} onEncuadre={setEncuadre} />
           <Environment preset="city" />
         </Suspense>
-        <ContactShadows position={[0, 0.001, 0]} opacity={0.4} scale={22} blur={2.2} far={10} />
+        <ContactShadows position={[centroPiso[0], centroPiso[1] + 0.001, centroPiso[2]]} opacity={0.4} scale={escalaPiso} blur={2.2} far={10} />
         <Grid
-          position={[0, 0, 0]}
+          position={centroPiso}
           args={[10, 10]}
           cellSize={1}
           cellThickness={0.5}
@@ -288,11 +359,10 @@ export default function Visor3D(props: Visor3DProps) {
           infiniteGrid
         />
         <OrbitControls
+          ref={controlsRef}
           makeDefault
           enableDamping
           dampingFactor={0.08}
-          minDistance={4}
-          maxDistance={32}
           maxPolarAngle={Math.PI / 2.05}
         />
       </Canvas>
