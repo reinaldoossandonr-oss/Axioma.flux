@@ -240,28 +240,49 @@ function AutoEncuadre({
     const box = new THREE.Box3().setFromObject(escena)
     if (box.isEmpty()) return
 
-    // Usamos la esfera envolvente (mitad de la diagonal 3D) en vez del eje
-    // más largo del box: al ver el modelo desde un ángulo isométrico, lo que
-    // hay que encuadrar es la diagonal completa (ancho + profundidad a la
-    // vez), no solo un eje.
-    const esfera = box.getBoundingSphere(new THREE.Sphere())
-    const centro = esfera.center
-    const radioEsfera = Math.max(esfera.radius, 0.5)
-
+    const centro = box.getCenter(new THREE.Vector3())
     const persp = camera as THREE.PerspectiveCamera
     const aspect = persp.aspect || 1
     const vFov = (persp.fov * Math.PI) / 180
-    // El FOV horizontal depende del aspect ratio real del panel. Si no se
-    // considera, un panel ancho y bajo (como el visor 3D, que ocupa casi
-    // todo el ancho de la pantalla) hace que la cámara se aleje muchísimo
-    // más de lo necesario para "encajar" el modelo, dejándolo diminuto y
-    // arrinconado arriba, con todo el resto del panel vacío.
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect)
-    const fovLimitante = Math.min(vFov, hFov)
-    // Margen de ~20% para que el modelo no quede pegado a los bordes.
-    const distancia = (radioEsfera / Math.sin(fovLimitante / 2)) * 1.2
 
+    // Un ajuste basado en "esfera envolvente" es demasiado conservador para
+    // modelos alargados (una fila larga de racks, angosta en altura): asume
+    // que toda la diagonal 3D debe entrar en el ángulo más chico, aunque en
+    // la práctica esa diagonal se proyecte sobre todo en el eje horizontal
+    // (que en un panel ancho tiene mucho más margen). En vez de eso,
+    // proyectamos las 8 esquinas del bounding box sobre los ejes reales
+    // "derecha" y "arriba" de la cámara para este ángulo de vista, y
+    // encuadramos el ancho contra el FOV horizontal y el alto contra el FOV
+    // vertical por separado — así se aprovecha todo el espacio disponible.
     const direccion = new THREE.Vector3(9, 7.5, 11).normalize()
+    const worldUp = new THREE.Vector3(0, 1, 0)
+    const forward = direccion.clone().negate()
+    let right = new THREE.Vector3().crossVectors(forward, worldUp)
+    if (right.lengthSq() < 1e-6) right = new THREE.Vector3(1, 0, 0)
+    right.normalize()
+    const up = new THREE.Vector3().crossVectors(right, forward).normalize()
+
+    let mitadAncho = 0.1
+    let mitadAlto = 0.1
+    const esquina = new THREE.Vector3()
+    const relativo = new THREE.Vector3()
+    for (let i = 0; i < 8; i++) {
+      esquina.set(
+        i & 1 ? box.max.x : box.min.x,
+        i & 2 ? box.max.y : box.min.y,
+        i & 4 ? box.max.z : box.min.z,
+      )
+      relativo.subVectors(esquina, centro)
+      mitadAncho = Math.max(mitadAncho, Math.abs(relativo.dot(right)))
+      mitadAlto = Math.max(mitadAlto, Math.abs(relativo.dot(up)))
+    }
+
+    const distanciaAncho = mitadAncho / Math.tan(hFov / 2)
+    const distanciaAlto = mitadAlto / Math.tan(vFov / 2)
+    // Margen de ~15% para que el modelo no quede pegado a los bordes.
+    const distancia = Math.max(distanciaAncho, distanciaAlto, 1) * 1.15
+
     camera.position.copy(centro.clone().add(direccion.multiplyScalar(distancia)))
     persp.near = Math.max(distancia / 100, 0.01)
     persp.far = distancia * 20
@@ -275,7 +296,9 @@ function AutoEncuadre({
       controlsRef.current.update()
     }
 
-    onEncuadre({ centro: [centro.x, centro.y, centro.z], radio: radioEsfera, pisoY: box.min.y })
+    const tamano = box.getSize(new THREE.Vector3())
+    const radioReporte = Math.max(mitadAncho, mitadAlto, tamano.length() / 2)
+    onEncuadre({ centro: [centro.x, centro.y, centro.z], radio: radioReporte, pisoY: box.min.y })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escena])
 
@@ -332,7 +355,7 @@ export default function Visor3D(props: Visor3DProps) {
   const escalaPiso = encuadre ? Math.max(encuadre.radio * 2.2, 10) : 22
 
   return (
-    <div className="relative w-full h-full min-h-[360px] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
+    <div className="relative w-full h-full min-h-[65vh] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
       <Canvas
         shadows
         dpr={[1, 2]}
