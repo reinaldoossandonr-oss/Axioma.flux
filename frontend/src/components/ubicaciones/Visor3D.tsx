@@ -1,9 +1,11 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Grid, Html, useGLTF, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
+
+const CAMARA_INICIAL: [number, number, number] = [9, 7.5, 11]
 
 export interface PosicionVisor3D {
   id: string
@@ -249,12 +251,44 @@ function Cargando() {
 }
 
 export default function Visor3D(props: Visor3DProps) {
+  const controlsRef = useRef<any>(null)
+
+  // En vez de adivinar matemáticamente el encuadre "perfecto" (que depende
+  // de la escala y forma de cada modelo subido, y es imposible de acertar a
+  // ciegas), le damos control manual y directo al usuario: botones de
+  // acercar/alejar/restablecer, y un rango de zoom bien amplio para que
+  // pueda ajustar la vista él mismo con la rueda del mouse o estos botones.
+  function escalarDistancia(factor: number) {
+    const controls = controlsRef.current
+    if (!controls) return
+    const camera = controls.object as THREE.PerspectiveCamera
+    const target = controls.target as THREE.Vector3
+    const offset = camera.position.clone().sub(target)
+    offset.multiplyScalar(factor)
+    const distanciaMin = controls.minDistance ?? 0.5
+    const distanciaMax = controls.maxDistance ?? 200
+    const distanciaActual = offset.length()
+    if (distanciaActual < distanciaMin) offset.setLength(distanciaMin)
+    if (distanciaActual > distanciaMax) offset.setLength(distanciaMax)
+    camera.position.copy(target.clone().add(offset))
+    controls.update()
+  }
+
+  function restablecerVista() {
+    const controls = controlsRef.current
+    if (!controls) return
+    const camera = controls.object as THREE.PerspectiveCamera
+    camera.position.set(...CAMARA_INICIAL)
+    controls.target.set(0, 0, 0)
+    controls.update()
+  }
+
   return (
     <div className="relative w-full h-full min-h-[360px] rounded-xl overflow-hidden bg-gradient-to-b from-slate-100 to-slate-200 border border-slate-200">
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [9, 7.5, 11], fov: 42 }}
+        camera={{ position: CAMARA_INICIAL, fov: 42 }}
         gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
       >
         <color attach="background" args={['#eef2f7']} />
@@ -288,14 +322,49 @@ export default function Visor3D(props: Visor3DProps) {
           infiniteGrid
         />
         <OrbitControls
+          ref={controlsRef}
           makeDefault
           enableDamping
           dampingFactor={0.08}
-          minDistance={4}
-          maxDistance={32}
+          minDistance={0.8}
+          maxDistance={80}
           maxPolarAngle={Math.PI / 2.05}
         />
       </Canvas>
+
+      {/* Controles manuales de zoom: no dependen de adivinar la escala del
+          modelo, el usuario ajusta la vista directamente. */}
+      <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 z-10">
+        <button
+          type="button"
+          onClick={() => escalarDistancia(0.7)}
+          title="Acercar"
+          aria-label="Acercar"
+          className="w-8 h-8 rounded-lg bg-white/90 hover:bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-700 font-bold text-lg leading-none transition-colors"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => escalarDistancia(1 / 0.7)}
+          title="Alejar"
+          aria-label="Alejar"
+          className="w-8 h-8 rounded-lg bg-white/90 hover:bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-700 font-bold text-lg leading-none transition-colors"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={restablecerVista}
+          title="Restablecer vista"
+          aria-label="Restablecer vista"
+          className="w-8 h-8 rounded-lg bg-white/90 hover:bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-700 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
