@@ -395,25 +395,25 @@ export default function UbicacionesPage() {
                 </div>
               ) : vista === '3d' && seleccionada.diseno_3d_url ? (
                 <div className="flex-1 min-h-0 flex flex-col gap-3">
-                  <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-nowrap items-center gap-2 flex-shrink-0 overflow-x-auto">
                     <input
                       type="text"
                       value={filtroSku}
                       onChange={e => setFiltroSku(e.target.value)}
                       placeholder="Filtrar / resaltar por SKU…"
-                      className="input w-full sm:w-56 text-sm"
+                      className="input w-44 md:w-56 text-sm flex-shrink-0"
                     />
                     <input
                       type="text"
                       value={filtroNombre}
                       onChange={e => setFiltroNombre(e.target.value)}
                       placeholder="Filtrar por nombre de producto…"
-                      className="input w-full sm:w-64 text-sm"
+                      className="input w-48 md:w-64 text-sm flex-shrink-0"
                     />
                     <select
                       value={filtroCategoriaId}
                       onChange={e => setFiltroCategoriaId(e.target.value)}
-                      className="input w-full sm:w-56 text-sm"
+                      className="input w-40 md:w-56 text-sm flex-shrink-0"
                     >
                       <option value="">Todas las categorías</option>
                       {categorias.map(c => (
@@ -421,15 +421,15 @@ export default function UbicacionesPage() {
                       ))}
                     </select>
 
-                    <span className="w-px h-6 bg-slate-200 mx-1 hidden sm:block" />
+                    <span className="w-px h-6 bg-slate-200 mx-1 flex-shrink-0" />
 
-                    <span className="text-xs font-medium text-slate-500">Rotación:</span>
+                    <span className="text-xs font-medium text-slate-500 flex-shrink-0">Rotación:</span>
                     {(['Alta', 'Media', 'Baja'] as ClaseRotacion[]).map(clase => (
                       <button
                         key={clase}
                         type="button"
                         onClick={() => toggleFiltroRotacion(clase)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                        className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                           filtroRotacion.includes(clase)
                             ? clase === 'Alta'
                               ? 'bg-emerald-500 border-emerald-500 text-white'
@@ -442,14 +442,14 @@ export default function UbicacionesPage() {
                         {clase}
                       </button>
                     ))}
-                  </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs font-medium text-slate-500">Color según:</span>
-                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-sm">
+                    <span className="w-px h-6 bg-slate-200 mx-1 flex-shrink-0" />
+
+                    <span className="text-xs font-medium text-slate-500 flex-shrink-0">Color según:</span>
+                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-sm flex-shrink-0">
                       <button
                         onClick={() => setModoColor('ocupacion')}
-                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                        className={`px-3 py-1 rounded-md text-xs transition-colors whitespace-nowrap ${
                           modoColor === 'ocupacion' ? 'bg-white shadow-sm text-slate-800 font-medium' : 'text-slate-500'
                         }`}
                       >
@@ -457,7 +457,7 @@ export default function UbicacionesPage() {
                       </button>
                       <button
                         onClick={() => setModoColor('rotacion')}
-                        className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                        className={`px-3 py-1 rounded-md text-xs transition-colors whitespace-nowrap ${
                           modoColor === 'rotacion' ? 'bg-white shadow-sm text-slate-800 font-medium' : 'text-slate-500'
                         }`}
                       >
@@ -466,7 +466,7 @@ export default function UbicacionesPage() {
                     </div>
 
                     {/* Leyenda de colores: varía según el modo de color activo */}
-                    <div className="flex items-center gap-3 flex-wrap ml-2">
+                    <div className="flex items-center gap-3 flex-nowrap ml-1 flex-shrink-0">
                       {modoColor === 'ocupacion' ? (
                         <>
                           <LeyendaItem color={COLOR_CON_STOCK} label="Con stock" />
