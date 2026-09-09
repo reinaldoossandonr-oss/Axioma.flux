@@ -184,7 +184,7 @@ export default function UbicacionesPage() {
   const TIPOS = ['almacen', 'bodega', 'planta', 'tienda', 'externo']
 
   return (
-    <div className="p-4 md:p-6 min-h-full flex flex-col gap-4 md:gap-5">
+    <div className="p-4 md:p-6 h-full flex flex-col gap-4 md:gap-5">
       <div className="flex items-center justify-between gap-3 flex-shrink-0">
         <div>
           <h1 className="text-lg md:text-xl font-bold text-slate-800">
