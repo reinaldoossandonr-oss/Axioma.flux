@@ -181,6 +181,10 @@ tr.pulsable{cursor:pointer}tr.pulsable:hover td{background:var(--sobre2)}
 .casillas{display:flex;flex-wrap:wrap;gap:8px 18px;padding-top:4px}
 .casillas label{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--texto);font-weight:500}
 .casillas input{width:auto!important;margin:0}
+.filtro3d{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filtro3d .sel{padding:6px 9px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,27,45,.08)}
+.filtro3d .sel.activo{border-color:var(--azul);color:var(--azul);background:rgba(14,165,240,.08)}
+.celda.oculta{visibility:hidden}
 .campo textarea{font:inherit;color:inherit;resize:vertical;min-height:120px}
 #form-empresa .campos{grid-template-columns:repeat(2,minmax(0,1fr))}
 #em-listas .campos{grid-template-columns:repeat(4,minmax(0,1fr))}

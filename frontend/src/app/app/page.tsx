@@ -44,6 +44,7 @@ const FUNCIONES: Record<string, Fn> = {
   saListarEmpresas: () => rpc('sa_listar_empresas'),
   saActualizarEmpresa: (d) => rpc('sa_actualizar_empresa', { p_id: d.id, d: d.cambios }),
   saBorrarDemo: (d) => rpc('sa_borrar_demo', { p_id: d.id }),
+  saAplicarNave: (d) => rpc('sa_aplicar_nave', { p_id: d.id, p_estilo: d.estilo }),
   crearEmpresa: (d) => edge('crear_empresa', d),
   crearUsuario: (d) => edge('crear_usuario', d),
   cambiarPassword: (d) => edge('cambiar_password', d),
