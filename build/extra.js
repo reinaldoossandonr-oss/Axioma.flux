@@ -22,7 +22,7 @@ function aplicarModulos() {
   b.classList.toggle('es-admin', esAdmin());
   SECCIONES.comercial.tabs = SECCIONES_BASE.comercial.tabs.filter(function (t) { return tiene('comercial') || (t[0] !== 'embudo' && t[0] !== 'equipo'); });
   SECCIONES.cuenta.tabs = SECCIONES_BASE.cuenta.tabs.filter(function (t) {
-    return t[0] === 'cuenta' || (esAdmin() && (t[0] === 'empresa' || t[0] === 'usuarios')) || (t[0] === 'admin' && D.superadmin);
+    return t[0] === 'cuenta' || (esAdmin() && (t[0] === 'empresa' || t[0] === 'usuarios' || t[0] === 'integraciones')) || (t[0] === 'admin' && D.superadmin);
   });
   [].forEach.call(document.querySelectorAll('.rejilla[data-ajustar]'), function (r) {
     var n = [].filter.call(r.children, function (c) { return getComputedStyle(c).display !== 'none'; }).length;
@@ -102,12 +102,19 @@ PINTAR.empresa = function () {
     campoAj('mesesFuturos', 'Meses previstos en el flujo', 'number', c.mesesFuturos) +
     '<div class="campo ancho"><label>Canales que cobran al momento (entran al flujo el día de la venta)</label><div class="casillas">' +
     D.listas.CANAL.map(function (x) { return '<label><input type="checkbox" data-contado="' + esc(x) + '"' + (c.contado.indexOf(x) > -1 ? ' checked' : '') + '> ' + esc(x) + '</label>'; }).join('') + '</div></div></div>';
+  var pl = D.plantillas || {};
   $('em-bodega').innerHTML = '<div class="campos">' +
+    campoAj('estilo', 'Diseño de la nave (centro de distribución)', 'select', b.estilo || 'clasico', { ancho: 1, op: Object.keys(pl).map(function (k) { return [k, pl[k].nombre]; }),
+      ayuda: 'Al elegir un diseño se cargan sus medidas; puedes ajustarlas antes de guardar.' }) +
     campoAj('pasillos', 'Pasillos (separados por coma)', 'text', (b.pasillos || []).join(', '), { ancho: 1 }) +
     campoAj('racks', 'Racks por pasillo', 'number', b.racks) + campoAj('niveles', 'Niveles por rack', 'number', b.niveles) +
     campoAj('ancho', 'Ancho de rack (m)', 'number', b.ancho, { paso: '0.01' }) + campoAj('alto', 'Alto de nivel (m)', 'number', b.alto, { paso: '0.01' }) +
-    campoAj('separacion', 'Separación entre pasillos (m)', 'number', b.separacion, { paso: '0.01' }) + '</div>' +
-    '<p class="nota-form">Ahora: ' + D.ubicaciones.length + ' posiciones. Al reducir la bodega solo se eliminan posiciones libres.</p>';
+    campoAj('separacion', 'Separación entre pasillos (m)', 'number', b.separacion, { paso: '0.01' }) +
+    campoAj('dobles', 'Racks dobles (espalda con espalda)', 'select', b.dobles ? '1' : '0', { op: [['0', 'No'], ['1', 'Sí']] }) +
+    campoAj('bloques', 'Bloques de racks', 'number', b.bloques || 1) +
+    campoAj('corte', 'Pasillo central entre bloques (m)', 'number', b.corte || 0, { paso: '0.1' }) +
+    campoAj('nivelesBloque', 'Niveles por bloque (opcional, ej.: 3, 7)', 'text', (b.nivelesBloque || []).join(', ')) + '</div>' +
+    '<p class="nota-form">Ahora: ' + D.ubicaciones.length + ' posiciones. Si cambias el trazado, las posiciones que ya no existan se eliminan (los productos y su stock no cambian).</p>';
   $('em-listas').innerHTML = '<div class="campos">' + LISTAS_EDITABLES.map(function (l) {
     return campoAj('l-' + l[0], l[1] + ' (una por línea)', 'textarea', (D.listas[l[0]] || []).join('\n'));
   }).join('') + '</div>';
@@ -178,6 +185,9 @@ function pintarDetalleEmpresa() {
     '<div class="campo"><label>Contraseña inicial *</label><input id="sau-pass" type="text" autocomplete="off"></div>' +
     '<div class="campo"><label>Rol</label><select id="sau-rol">' + Object.keys(ROLES).map(function (r) { return '<option value="' + r + '">' + ROLES[r] + '</option>'; }).join('') + '</select></div>' +
     '</div><div class="pie-form"><button class="btn" type="submit">+ Añadir usuario</button></div></form>' +
+    '<h3 style="margin-top:22px">Diseño 3D de la nave</h3><div class="sub">Aplica una plantilla de centro de distribución. Regenera las posiciones; las que ya no existan en la nueva nave se eliminan.</div>' +
+    '<div class="pie-form" style="margin-top:6px"><select class="sel" id="sa-estilo">' + Object.keys(D.plantillas || {}).map(function (k) { return '<option value="' + k + '"' + (k === e.estilo ? ' selected' : '') + '>' + esc(D.plantillas[k].nombre) + '</option>'; }).join('') + '</select>' +
+    '<button class="btn" data-accion="saNave" data-id="' + esc(e.id) + '">Aplicar nave</button></div>' +
     '<h3 style="margin-top:22px">Datos de ejemplo</h3><div class="sub">36 productos de ferretería, 15 meses de ventas, movimientos, facturas, prospectos y gastos. Se pueden borrar sin tocar los datos reales.</div>' +
     '<div class="pie-form" style="margin-top:6px"><button class="btn" data-accion="saDemo" data-id="' + esc(e.id) + '"' + (e.tieneDemo ? ' disabled' : '') + '>Cargar datos de ejemplo</button><button class="btn" data-accion="saBorrarDemo" data-id="' + esc(e.id) + '"' + (e.tieneDemo ? '' : ' disabled') + '>Borrar datos de ejemplo</button></div>';
 }
@@ -206,7 +216,9 @@ var PROPIOS = {
     var d = { nombreEmpresa: valor('aj-nombreEmpresa'), moneda: valor('aj-moneda'), zona_horaria: valor('aj-zona_horaria'), decimales: Number(valor('aj-decimales')) };
     ['iva', 'critico', 'precaucion', 'rotAlta', 'rotMedia', 'cobertura', 'peso90', 'pesoAA', 'diasLead', 'saldo', 'mesesPasados', 'mesesFuturos'].forEach(function (k) { var v = n(k); if (v !== undefined && !isNaN(v)) d[k] = v; });
     d.contado = [].map.call(form.querySelectorAll('[data-contado]:checked'), function (x) { return x.getAttribute('data-contado'); });
-    d.bodega = { pasillos: unicos(valor('aj-pasillos').toUpperCase().split(/[\s,;]+/).filter(Boolean)), racks: n('racks'), niveles: n('niveles'), ancho: n('ancho'), alto: n('alto'), separacion: n('separacion') };
+    d.bodega = { estilo: valor('aj-estilo') || 'clasico', pasillos: unicos(valor('aj-pasillos').toUpperCase().split(/[\s,;]+/).filter(Boolean)), racks: n('racks'), niveles: n('niveles'),
+      ancho: n('ancho'), alto: n('alto'), separacion: n('separacion'), dobles: valor('aj-dobles') === '1', bloques: n('bloques') || 1, corte: n('corte') || 0,
+      nivelesBloque: valor('aj-nivelesBloque').split(/[\s,;]+/).filter(Boolean).map(Number).filter(function (x) { return x > 0; }) };
     d.listas = {};
     LISTAS_EDITABLES.forEach(function (l) { d.listas[l[0]] = unicos(valor('aj-l-' + l[0]).split('\n').map(function (x) { return x.trim(); }).filter(Boolean)); });
     var fin = bloquear(form);
@@ -243,6 +255,18 @@ var PROPIOS = {
 };
 
 ACCIONES.salir = function () { servidor('salir', null); };
+/* Modo claro / oscuro: lo elige cada usuario y se recuerda en este navegador */
+function marcarTema() {
+  var claro = document.body.classList.contains('claro'), b = $('btn-tema');
+  if (b) b.title = claro ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+}
+ACCIONES.tema = function () {
+  var claro = !document.body.classList.contains('claro');
+  document.body.classList.toggle('claro', claro);
+  guardarLocal('tema', claro ? 'claro' : 'oscuro');
+  marcarTema(); BODEGA.tema();
+  if (D) pintar();
+};
 ACCIONES.clave = function (id) { CTX.clave = id || null; PINTAR.usuarios(); if (id && $('clave-nueva')) $('clave-nueva').focus(); };
 ACCIONES.guardarClave = function (id) {
   var p = $('clave-nueva').value;
@@ -252,6 +276,12 @@ ACCIONES.guardarClave = function (id) {
 ACCIONES.usuarioActivo = function (id) {
   var u = CTX.usuarios.filter(function (x) { return x.id === id; })[0]; if (!u) return;
   servidor('cambiarUsuario', { id: id, rol: u.rol, activo: !u.activo }, function () { avisar(u.activo ? 'Usuario desactivado.' : 'Usuario activado.'); recargarUsuarios(); });
+};
+ACCIONES.saNave = function (id) {
+  servidor('saAplicarNave', { id: id, estilo: $('sa-estilo').value }, function (r) {
+    avisar(r.mensaje || 'Nave aplicada.');
+    recargarEmpresas(function () { if (D.empresa && D.empresa.id === id) cargar(function () { mostrar('admin'); }); });
+  });
 };
 ACCIONES.saGestionar = function (id) { CTX.sel = id; PINTAR.admin(); };
 ACCIONES.saDemo = function (id) {
@@ -269,6 +299,15 @@ ACCIONES.saBorrarDemo = function (id) {
 };
 
 function enlazarSaas() {
+  marcarTema();
+  $('em-bodega').addEventListener('change', function (e) {
+    if (e.target.id !== 'aj-estilo') return;
+    var p = (D.plantillas || {})[e.target.value]; if (!p) return;
+    var fija = function (k, v) { if ($('aj-' + k)) $('aj-' + k).value = v; };
+    fija('pasillos', p.pasillos.join(', ')); ['racks', 'niveles', 'ancho', 'alto', 'separacion', 'bloques', 'corte'].forEach(function (k) { fija(k, p[k] != null ? p[k] : ''); });
+    fija('dobles', p.dobles ? '1' : '0'); fija('nivelesBloque', (p.nivelesBloque || []).join(', '));
+    avisar('Medidas de "' + p.nombre + '" cargadas. Pulsa Guardar ajustes para aplicarlas.');
+  });
   $('us-tabla').addEventListener('change', function (e) {
     var id = e.target.getAttribute('data-usuario-rol'); if (!id) return;
     var u = CTX.usuarios.filter(function (x) { return x.id === id; })[0];
@@ -279,3 +318,42 @@ function enlazarSaas() {
     [].forEach.call($('sa-modulos').querySelectorAll('input'), function (x) { x.disabled = !e.target.checked; });
   });
 }
+
+/* ---------- Filtros de posiciones (3D y mapa): esconden lo que no cumple ---------- */
+ESTADO.filtro = { categoria: '', rotacion: '', disp: '', pasillo: '' };
+function filtroActivo() { var f = ESTADO.filtro; return !!(f.categoria || f.rotacion || f.disp || f.pasillo); }
+function pasaFiltro(x) {
+  var f = ESTADO.filtro;
+  if (f.pasillo && x.u.pasillo !== f.pasillo) return false;
+  if (f.disp === 'ocupada' && !x.it) return false;
+  if (f.disp === 'libre' && x.it) return false;
+  if (f.categoria && (!x.it || x.it.p.categoria !== f.categoria)) return false;
+  if (f.rotacion && (!x.it || x.it.rot !== f.rotacion)) return false;
+  return true;
+}
+function htmlFiltros() {
+  var f = ESTADO.filtro, op = function (k, lista, todos) {
+    return '<select class="sel' + (f[k] ? ' activo' : '') + '" data-filtro="' + k + '" title="' + todos + '"><option value="">' + todos + '</option>' +
+      lista.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (f[k] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  };
+  return op('categoria', C.categorias.map(function (c) { return [c, c]; }), 'Todas las categorías') +
+    op('rotacion', [['Alta', 'Rotación alta'], ['Media', 'Rotación media'], ['Baja', 'Rotación baja']], 'Toda rotación') +
+    op('disp', [['ocupada', 'Solo ocupadas'], ['libre', 'Solo libres']], 'Ocupadas y libres') +
+    op('pasillo', unicos(D.ubicaciones.map(function (u) { return u.pasillo; })).map(function (p) { return [p, 'Pasillo ' + p]; }), 'Todos los pasillos') +
+    (filtroActivo() ? '<button class="btn mini" data-accion="limpiarFiltros">Quitar filtros</button>' : '');
+}
+function pintarFiltros() { ['b-filtros', 'u-filtros'].forEach(function (id) { if ($(id)) $(id).innerHTML = htmlFiltros(); }); }
+function aplicarFiltro(cambioPasillo) {
+  if (cambioPasillo) { ESTADO.pasillo = ESTADO.filtro.pasillo; BODEGA.enfocar(); }
+  BODEGA.actualizar(); pintar();
+}
+function resumenFiltro() {
+  if (!filtroActivo()) return '';
+  var n = D.ubicaciones.filter(function (u) { return pasaFiltro(C.ubi[u.id]); }).length;
+  return '<div class="aviso-demo" style="margin-bottom:12px">Filtro activo: se muestran <b>' + num(n) + '</b> de ' + num(D.ubicaciones.length) + ' posiciones.</div>';
+}
+ACCIONES.limpiarFiltros = function () { var p = !!ESTADO.filtro.pasillo; ESTADO.filtro = { categoria: '', rotacion: '', disp: '', pasillo: '' }; aplicarFiltro(p); };
+document.addEventListener('change', function (e) {
+  var k = e.target && e.target.getAttribute && e.target.getAttribute('data-filtro'); if (!k) return;
+  ESTADO.filtro[k] = e.target.value; aplicarFiltro(k === 'pasillo');
+});

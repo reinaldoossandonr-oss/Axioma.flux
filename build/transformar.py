@@ -44,6 +44,9 @@ cuerpo = cambiar(cuerpo, '<button data-vista="finanzas">', '<button data-vista="
 cuerpo = cambiar(cuerpo, '    <div class="hueco"></div>\n',
     '    <div class="hueco"></div>\n'
     '    <button data-vista="cuenta"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>Ajustes</button>\n')
+cuerpo = cambiar(cuerpo, '<div class="menu">', '<button class="btn btn-tema" id="btn-tema" data-accion="tema" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro">'
+    '<svg class="ico-luna" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>'
+    '<svg class="ico-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg></button>\n      <div class="menu">')
 cuerpo = cambiar(cuerpo, "      </div>\n    </header>", '      </div>\n      <div class="quien" id="quien"></div>\n    </header>')
 for v in ["f-lead", "f-contacto", "f-meta"]:
     cuerpo = cambiar(cuerpo, f'<button data-vista="{v}">', f'<button data-vista="{v}" data-modulo="comercial">')
@@ -103,6 +106,16 @@ VISTAS_NUEVAS = '''
           </div>
         </div>
       </section>
+      <section class="vista" id="v-integraciones">
+        <div class="t int-cab"><div><h3>Integraciones</h3><div class="sub">Conecta Flux con tu ERP o WMS. Hoy entra todo lo que tu sistema exporte en CSV o Excel; los conectores directos llegan por fases.</div></div>
+          <div class="int-con" id="in-conectores"></div></div>
+        <div class="rejilla" style="--c:3">
+          <div class="t" id="in-fuentes"></div>
+          <div class="t" id="in-importar" style="grid-column:span 2"></div>
+        </div>
+        <div class="t" id="in-equivalencias" style="margin-bottom:14px"></div>
+        <div class="t"><h3>Historial de sincronizaciones</h3><div class="sub">Las últimas 40 importaciones de la empresa: qué entró, qué falló y cuándo</div><div class="tabla-caja" style="max-height:380px"><table id="in-historial"></table></div></div>
+      </section>
       <section class="vista" id="v-admin">
         <div class="rejilla kpis" id="ad-kpis"></div>
         <div class="t" style="margin-bottom:14px"><h3>Empresas clientes</h3><div class="sub">Plan, módulos y estado de cada empresa. Los datos de cada una están aislados por seguridad a nivel de fila.</div><div class="tabla-caja" style="max-height:420px"><table id="ad-tabla"></table></div></div>
@@ -120,6 +133,8 @@ VISTAS_NUEVAS = '''
         </div>
       </section>
 '''
+cuerpo = cambiar(cuerpo, '<div class="seg" id="b-pasillos"></div>', '<div class="filtro3d" id="b-filtros"></div>')
+cuerpo = cambiar(cuerpo, '<div class="leyenda" id="u-leyenda"></div>', '<div class="filtro3d" id="u-filtros"></div><div class="leyenda" id="u-leyenda"></div>')
 cuerpo = cambiar(cuerpo, '      <div id="formularios"></div>', VISTAS_NUEVAS + '      <div id="formularios"></div>')
 
 # ---------------- CSS ----------------
@@ -132,6 +147,10 @@ css_panel += '''
 .casillas{display:flex;flex-wrap:wrap;gap:8px 18px;padding-top:4px}
 .casillas label{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--texto);font-weight:500}
 .casillas input{width:auto!important;margin:0}
+.filtro3d{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filtro3d .sel{padding:6px 9px;font-size:12.5px;font-weight:600;box-shadow:0 1px 2px rgba(15,27,45,.08)}
+.filtro3d .sel.activo{border-color:var(--azul);color:var(--azul);background:rgba(14,165,240,.08)}
+.celda.oculta{visibility:hidden}
 .campo textarea{font:inherit;color:inherit;resize:vertical;min-height:120px}
 #form-empresa .campos{grid-template-columns:repeat(2,minmax(0,1fr))}
 #em-listas .campos{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -140,6 +159,35 @@ body:not(.m-comercial) [data-modulo~="comercial"],body:not(.m-finanzas) [data-mo
 body.solo-lectura .menu,body.solo-lectura #formularios,body.solo-lectura [data-vista^="f-"],body.solo-lectura .lead .l4,
 body.solo-lectura [data-accion="liquidar"],body.solo-lectura [data-accion="abonar"],body.solo-lectura #b-panel .pie-form,body.solo-lectura #b-panel .campo,
 body.solo-lectura #r-guardar,body.solo-lectura #r-deshacer{display:none!important}
+.btn-tema{width:38px;height:38px;padding:0;display:grid;place-items:center;flex:none;margin-left:auto}
+.btn-tema svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.claro .btn-tema .ico-sol,body:not(.claro) .btn-tema .ico-luna{display:none}
+.int-cab{margin-bottom:14px}
+.int-con{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:4px}
+.int-con .c{border:1px solid var(--linea);border-radius:11px;padding:10px 12px;background:var(--tarjeta2);display:flex;flex-direction:column;align-items:flex-start}
+.int-con .c b{font-size:13px}.int-con .c p{margin:4px 0 8px;font-size:12px;color:var(--suave);line-height:1.35;flex:1}
+.int-fuente{flex-wrap:wrap}.int-fuente.sel .x b{color:var(--azul)}
+.int-acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.btn.peligro{border-color:var(--rojo);color:var(--rojo)}
+.int-fila{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.int-fila>label{font-size:12px;font-weight:600;color:var(--suave)}
+.int-ent{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.int-ent button{text-align:left;border:1px solid var(--linea);background:var(--tarjeta);border-radius:10px;padding:9px 11px;cursor:pointer;color:var(--texto);font:inherit}
+.int-ent button:hover{border-color:var(--azul)}
+.int-ent button.activo{border-color:var(--azul);box-shadow:0 0 0 2px rgba(14,165,240,.2);background:rgba(14,165,240,.06)}
+.int-ent button b{display:block;font-size:13px}.int-ent button span{font-size:11.5px;color:var(--suave)}
+.int-zona{display:block;border:1.5px dashed var(--linea);border-radius:12px;padding:18px;text-align:center;color:var(--suave);cursor:pointer;margin:14px 0;font-size:13px;line-height:1.6;transition:border-color .15s,background .15s}
+.int-zona:hover,.int-zona.sobre{border-color:var(--azul);background:rgba(14,165,240,.06)}
+.int-zona b{color:var(--texto)}.int-zona span{font-size:12px}
+.int-mapa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;margin:0 0 16px}
+.int-mapa label{display:block;font-size:12px;font-weight:600;color:var(--suave);margin-bottom:4px}
+.int-mapa select{width:100%}
+.int-barra{height:9px;border-radius:6px;background:var(--tarjeta2);border:1px solid var(--linea);overflow:hidden;margin:10px 0 6px}
+.int-barra i{display:block;height:100%;background:var(--azul);transition:width .3s}
+.int-res{border-top:1px solid var(--linea);margin-top:6px;padding-top:12px}
+td.mal{color:var(--rojo);font-weight:600;background:rgba(248,113,113,.08)}
+@media(max-width:1100px){.int-con{grid-template-columns:repeat(2,minmax(0,1fr))}.int-ent,.int-mapa{grid-template-columns:repeat(2,minmax(0,1fr))}#in-importar{grid-column:auto!important}}
+@media(max-width:760px){.int-con,.int-ent,.int-mapa{grid-template-columns:1fr}}
 @media(max-width:1100px){.quien{display:none}#em-listas .campos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){#form-empresa .campos,#em-listas .campos{grid-template-columns:1fr}}
 '''
@@ -152,7 +200,7 @@ js = cambiar(js, "+ ',' + ('0' + c).slice(-2) + ' €'; }", "+ ',' + ('0' + c).s
 js = cambiar(js, "(€)'", "({m})'", 7)
 js = cambiar(js, "  finanzas: { titulo: 'Finanzas', tabs: [['finanzas', 'Dashboard'], ['flujo', 'Flujo de caja'], ['cuentas', 'Facturas'], ['pagos', 'Cobros y pagos'], ['gastos', 'Gastos']] }\n};",
              "  finanzas: { titulo: 'Finanzas', tabs: [['finanzas', 'Dashboard'], ['flujo', 'Flujo de caja'], ['cuentas', 'Facturas'], ['pagos', 'Cobros y pagos'], ['gastos', 'Gastos']] },\n"
-             "  cuenta: { titulo: 'Ajustes', tabs: [['cuenta', 'Mi cuenta'], ['empresa', 'Empresa'], ['usuarios', 'Usuarios'], ['admin', 'Superadmin']] }\n};")
+             "  cuenta: { titulo: 'Ajustes', tabs: [['cuenta', 'Mi cuenta'], ['empresa', 'Empresa'], ['usuarios', 'Usuarios'], ['integraciones', 'Integraciones'], ['admin', 'Superadmin']] }\n};")
 js = cambiar(js, "  if (!document.getElementById('v-' + vista)) vista = 'inicio';",
              "  if (!document.getElementById('v-' + vista) || (D && !permitida(vista))) vista = 'inicio';")
 js = cambiar(js, "  $('i-aviso').innerHTML = !D.existe ? '<div class=\"aviso-demo\">Aún no existen las tablas. En la hoja, ejecuta <b>Bodega &gt; Crear / reparar todo</b>.</div>' :\n"
@@ -169,8 +217,73 @@ js = cambiar(js, "  $('p-entrar').addEventListener('click', entrar);\n  document
 js = cambiar(js, "  google.script.run.withSuccessHandler(function (d) {\n    D = d;\n",
              "  google.script.run.withSuccessHandler(function (d) {\n    if (d && d.ok === false) { mostrarSinEmpresa(d); return; }\n    D = d;\n    aplicarModulos(); crearFormularios(); CTX.usuarios = null; CTX.empresas = null;\n")
 js = cambiar(js, "/* ===================== ARRANQUE ===================== */",
-             EXTRA.read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
-js = cambiar(js, "  enlazar();\n", "  enlazar(); enlazarSaas();\n")
+             EXTRA.read_text(encoding="utf-8") + "\n" + EXTRA.with_name("integraciones.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+js = cambiar(js, "  enlazar();\n", "  enlazar(); enlazarSaas(); enlazarIntegraciones();\n")
+# Ajustes de stock que llegan de las integraciones (WMS / SAP)
+js = cambiar(js, "    if (m[2] === 'Ingreso Existencia') it.stock += m[4];\n    else if (m[2] === 'Salida Venta' || m[2] === 'Merma / Daño') it.stock -= m[4];",
+                 "    if (m[2] === 'Ingreso Existencia' || m[2] === 'Ajuste Entrada') it.stock += m[4];\n    else if (m[2] === 'Salida Venta' || m[2] === 'Merma / Daño' || m[2] === 'Ajuste Salida') it.stock -= m[4];")
+js = cambiar(js, "'Transferencia': 'gris' };", "'Transferencia': 'gris', 'Ajuste Entrada': 'ambar', 'Ajuste Salida': 'ambar' };")
+js = cambiar(js, "(m[2] === 'Ingreso Existencia' ? '+' : m[2] === 'Transferencia' ? '' : '−')", "(m[2] === 'Ingreso Existencia' || m[2] === 'Ajuste Entrada' ? '+' : m[2] === 'Transferencia' ? '' : '−')")
+js = cambiar(js, "guardar('m-tipo', opciones(D.listas.TIPO_MOV, 'Todos los tipos'));", "guardar('m-tipo', opciones(D.listas.TIPO_MOV.concat(['Ajuste Entrada', 'Ajuste Salida']), 'Todos los tipos'));")
+
+# ---------------- Bodega 3D: estilos de nave por empresa y cajas de color ----------------
+ESTILOS = pathlib.Path(__file__).with_name("estilos3d.js")
+js = cambiar(js, "  function iniciar() {\n    caja = $('lienzo');", ESTILOS.read_text(encoding="utf-8") + "\n  function iniciar() {\n    caja = $('lienzo');")
+js = cambiar(js, "    escena.add(new T.HemisphereLight(0xcfe0ff, 0x30333a, 0.5));",
+    "    M.cajaTex = texCajaClara('carton'); M.cubetaTex = texCajaClara('cubeta');\n"
+    "    M.cajaCarton = new T.MeshStandardMaterial({ map: M.cajaTex, roughness: 0.82 });\n"
+    "    M.cajaCubeta = new T.MeshStandardMaterial({ map: M.cubetaTex, roughness: 0.42, metalness: 0.05 });\n"
+    "    M.verdeSuelo = new T.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.6, transparent: true, opacity: 0.8 });\n"
+    "    M.lineaAzul = new T.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.6 });\n"
+    "    M.lineaRack = new T.MeshStandardMaterial({ color: 0xe9b400, roughness: 0.7 });\n"
+    "    materialesPremium();\n"
+    "    escena.add(new T.HemisphereLight(0xcfe0ff, 0x30333a, 0.5));")
+js = cambiar(js, "    // Nave: piso, paredes, portón, cerchas y lámparas\n",
+    "    var E = ESTILOS3D[estiloActual()];\n"
+    "    M.pilar.color.setHex(E.pilar); M.viga.color.setHex(E.viga); M.lineaRack.color.setHex(E.linea);\n"
+    "    if (E.fondo) { escena.background.setHex(E.fondo); escena.fog.color.setHex(E.fondo); } else tema();\n"
+    "    if (E.nave) {\n"
+    "      var zPared = minZ - 5.5, xPared = minX - W / 2 - 7;\n"
+    "      var pared1 = new T.Group(), pared2 = new T.Group(), altoG = new T.Group(); grupo.add(pared1); grupo.add(pared2); grupo.add(altoG);\n"
+    "      grupo.userData.ocultar = { pared1: pared1, pared2: pared2, alto: altoG, z: zPared, x: xPared, y: techo - 1.6 };\n"
+    "      E.nave({ minX: minX, maxX: maxX, minZ: minZ, maxZ: maxZ, W: W, H: H, Dp: Dp, techo: techo, largo: largo, fondo: fondo,\n"
+    "        zPared: zPared, xPared: xPared, pared1: pared1, pared2: pared2, altoG: altoG, centro: centro });\n"
+    "    } else {\n"
+    "    // Nave: piso, paredes, portón, cerchas y lámparas\n")
+js = cambiar(js, "    sol.position.set(centro.x + 9, techo + 9, centro.z + 12);", "    }\n    sol.position.set(centro.x + 9, techo + 9, centro.z + 12);")
+js = cambiar(js, "var ln = malla(new T.PlaneGeometry(lon + 1.2, 0.09), M.amarillo,", "var ln = malla(new T.PlaneGeometry(lon + 1.2, 0.09), M.lineaRack,")
+js = re.sub(r"    // Racks: un bastidor por pasillo\n.*?\n    // Posiciones: palé", "    construirRacks(U, W, H, Dp);\n\n    // Posiciones: palé", js, count=1, flags=re.S)
+assert "construirRacks(U, W, H, Dp);" in js
+js = cambiar(js, "dim.d = Math.min(1.15, paso(U.map(function (u) { return u.y; }), 3.6) * 0.45);",
+                 "dim.d = Math.min(1.15, Math.max(1.0, paso(U.map(function (u) { return u.y; }), 3.6) * 0.45));")
+js = cambiar(js, "    var largo = maxX - minX + W + 16, fondo = maxZ - minZ + 18;\n",
+                 "    var largo = maxX - minX + W + 16, fondo = maxZ - minZ + 18;\n    escena.fog.near = Math.max(34, radioBase * 1.4); escena.fog.far = Math.max(80, radioBase * 3.4); camara.far = Math.max(200, radioBase * 6); camara.updateProjectionMatrix();\n")
+js = cambiar(js, "zPared: zPared, xPared: xPared, pared1: pared1, pared2: pared2, altoG: altoG, centro: centro });",
+                 "zPared: zPared, xPared: xPared, pared1: pared1, pared2: pared2, altoG: altoG, centro: centro, cortes: cortesX(U, W) });")
+js = cambiar(js, "Math.min(70, ", "Math.min(180, ", 2)
+# Filtros que esconden posiciones
+cuerpo_f = None
+js = cambiar(js, "      var x = C.ubi[u.id], hay = !!x.it, y = u.z + (u.z < 0.2 ? 0 : 0.012);",
+                 "      var x = C.ubi[u.id], hay = !!x.it, y = u.z + (u.z < 0.2 ? 0 : 0.012), pasa = pasaFiltro(x);")
+js = cambiar(js, "      if (hay) {\n        poner(t.tablas", "      if (hay && pasa) {\n        poner(t.tablas")
+js = cambiar(js, "      poner(etiquetas, i, u.x, u.z < 0.2 ? 0.05 : u.z - 0.055, u.y + Dp / 2 + (u.z < 0.2 ? 0.2 : 0.055));\n      poner(huecos, i, u.x, u.z + dim.h * 0.45, u.y);",
+                 "      if (pasa) {\n        poner(etiquetas, i, u.x, u.z < 0.2 ? 0.05 : u.z - 0.055, u.y + Dp / 2 + (u.z < 0.2 ? 0.2 : 0.055));\n        poner(huecos, i, u.x, u.z + dim.h * 0.45, u.y);\n      } else { etiquetas.setMatrixAt(i, cero); huecos.setMatrixAt(i, cero); }")
+js = cambiar(js, "var x = C.ubi[u.id], k = m === 'disponibilidad'", "var x = C.ubi[u.id]; if (!pasaFiltro(x)) return; var k = m === 'disponibilidad'")
+js = re.sub(r"  \$\('b-pasillos'\)\.innerHTML = .*?\n  marcarSegmento\('b-pasillos', 'data-pasillo', ESTADO\.pasillo\);", "  pintarFiltros();", js, count=1, flags=re.S)
+assert "  pintarFiltros();" in js
+js = cambiar(js, "  marcarSegmento('u-color', 'data-color', ESTADO.color);", "  marcarSegmento('u-color', 'data-color', ESTADO.color);\n  pintarFiltros();")
+js = cambiar(js, "  $('u-mapa').innerHTML = pasillos.map(", "  $('u-mapa').innerHTML = resumenFiltro() + pasillos.filter(function (p) { return !ESTADO.filtro.pasillo || p === ESTADO.filtro.pasillo; }).map(")
+js = cambiar(js, "h += '<div class=\"celda' + (x.it ? '' : ' libre')", "h += '<div class=\"celda' + (x.it ? '' : ' libre') + (pasaFiltro(x) ? '' : ' oculta')")
+js = cambiar(js, "  $('b-panel').innerHTML = h;", "  $('b-panel').innerHTML = resumenFiltro() + h;")
+js = cambiar(js, "    tema: tema, actualizar: actualizar,", "    fijarVista: function (o) { for (var k in o) orb[k] = o[k]; anim = null; sucio = true; },\n    tema: tema, actualizar: actualizar,")
+js = cambiar(js, "cargas = inst(caj(1.08, 1, 0.94), M.carton, n);", "cargas = inst(caj(1.08, 1, 0.94), E.caja === 'cubeta' ? M.cajaCubeta : M.cajaCarton, n);")
+js = cambiar(js, "        var gris = 0.82 + ((i * 37) % 17) / 100; cargas.setColorAt(i, col.setRGB(gris, gris, gris));",
+                 "        cargas.setColorAt(i, col.setRGB(1, 1, 1));")
+js = cambiar(js, "      var x = C.ubi[u.id]; col.set(colorUbi(x));\n      etiquetas.setColorAt(i, col); bandas.setColorAt(i, col);\n    });\n    etiquetas.instanceColor.needsUpdate = true; bandas.instanceColor.needsUpdate = true;",
+                 "      var x = C.ubi[u.id]; col.set(colorUbi(x));\n      etiquetas.setColorAt(i, col);\n"
+                 "      var tono = x.it ? tonoCaja(colorUbi(x), i) : new T.Color(1, 1, 1);\n"
+                 "      cargas.setColorAt(i, tono); bandas.setColorAt(i, tono.clone().multiplyScalar(0.55));\n    });\n"
+                 "    etiquetas.instanceColor.needsUpdate = true; bandas.instanceColor.needsUpdate = true; cargas.instanceColor.needsUpdate = true;")
 
 # ---------------- Escritura ----------------
 app = FRONT / "src/app/app"
