@@ -45,6 +45,16 @@ const FUNCIONES: Record<string, Fn> = {
   saActualizarEmpresa: (d) => rpc('sa_actualizar_empresa', { p_id: d.id, d: d.cambios }),
   saBorrarDemo: (d) => rpc('sa_borrar_demo', { p_id: d.id }),
   saAplicarNave: (d) => rpc('sa_aplicar_nave', { p_id: d.id, p_estilo: d.estilo }),
+  // Integraciones (Ajustes › Integraciones)
+  intListar: () => rpc('int_listar'),
+  intGuardar: (d) => rpc('int_guardar', { d }),
+  intBorrar: (d) => rpc('int_borrar', { p_id: d.id }),
+  intMapeos: (d) => rpc('int_mapeos', { p_id: d.id }),
+  intGuardarMapeo: (d) => rpc('int_guardar_mapeo', { d }),
+  intIniciar: (d) => rpc('int_iniciar', { d }),
+  intLote: (d) => rpc('int_lote', { p_sync: d.id, p_filas: d.filas }),
+  intFinalizar: (d) => rpc('int_finalizar', { p_sync: d.id }),
+  intErrores: (d) => rpc('int_errores', { p_sync: d.id }),
   crearEmpresa: (d) => edge('crear_empresa', d),
   crearUsuario: (d) => edge('crear_usuario', d),
   cambiarPassword: (d) => edge('cambiar_password', d),
@@ -99,14 +109,18 @@ export default function Panel() {
     const w = window as any
     if (w.__panelIniciado) return            // evita doble arranque (modo estricto de React)
     w.__panelIniciado = true
-    document.body.classList.add('claro')
+    // Modo claro por defecto; el oscuro se recuerda si el usuario lo eligió con el botón de la cabecera
+    let tema: string | null = null
+    try { tema = localStorage.getItem('axioma-bodega-tema') } catch { /* sin almacenamiento */ }
+    document.body.classList.toggle('claro', tema !== 'oscuro')
     w.google = { script: { get run() { return crearRun() } } }
     ;(async () => {
       const { data } = await supabase.auth.getSession()
       if (!data.session) { window.location.href = '/login'; return }
       try { await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js') }
       catch { await cargarScript('https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js').catch(() => {}) }
-      await cargarScript('/panel/panel.js?v=2')
+      // La versión cambia en cada publicación: el navegador nunca usa un panel.js viejo guardado en caché
+      await cargarScript('/panel/panel.js?v=' + (process.env.NEXT_PUBLIC_PANEL_VERSION || Date.now()))
     })()
   }, [])
 
