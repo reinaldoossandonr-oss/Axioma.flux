@@ -62,6 +62,12 @@ const FUNCIONES: Record<string, Fn> = {
   completarLote: (d) => rpc('completar_lote', { p_id: d.id }),
   cancelarLote: (d) => rpc('cancelar_lote', { p_id: d.id }),
   demoPedidos: (d) => rpc('demo_pedidos', { p_n: d.n ?? 24 }),
+  // Asistente Flux: la IA solo traduce la pregunta a una consulta; los datos no salen del navegador
+  asistente: async (d) => {
+    const { data, error } = await supabase.functions.invoke('asistente-flux', { body: d })
+    if (error) return { ok: false, motivo: 'funcion' }
+    return data
+  },
   crearEmpresa: (d) => edge('crear_empresa', d),
   crearUsuario: (d) => edge('crear_usuario', d),
   cambiarPassword: (d) => edge('cambiar_password', d),
