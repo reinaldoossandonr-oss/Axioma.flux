@@ -1,0 +1,71 @@
+/* Axioma Flux · login: entrada escalonada, foto con zoom lento, ruta de picking animada, ondas y transición al panel */
+:root { --lg-azul: #1AABF0; --lg-azul2: #0891B2; --lg-ease: cubic-bezier(.2, .8, .2, 1); }
+
+@keyframes lgSube { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes lgDesdeDerecha { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes lgZoom { from { transform: scale(1.04); } to { transform: scale(1.14) translate(-1.5%, -1%); } }
+@keyframes lgAurora1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-40px, 30px) scale(1.15); } }
+@keyframes lgAurora2 { 0%, 100% { transform: translate(0, 0) scale(1.1); } 50% { transform: translate(50px, -40px) scale(.9); } }
+@keyframes lgRuta { to { stroke-dashoffset: 0; } }
+@keyframes lgParada { 0%, 100% { r: 4; opacity: .55; } 50% { r: 6.5; opacity: 1; } }
+@keyframes lgBrillo { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(260%) skewX(-18deg); } }
+@keyframes lgOnda { to { transform: translate(-50%, -50%) scale(1); opacity: 0; } }
+@keyframes lgTiembla { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
+@keyframes lgCortina { from { clip-path: circle(0% at var(--cx, 50%) var(--cy, 50%)); } to { clip-path: circle(150% at var(--cx, 50%) var(--cy, 50%)); } }
+@keyframes lgLatido { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: .8; } }
+@keyframes lgCarga { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes lgCheck { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+.lg-entra { animation: lgSube .7s var(--lg-ease) both; }
+.lg-d1 { animation-delay: .08s; } .lg-d2 { animation-delay: .18s; } .lg-d3 { animation-delay: .28s; }
+.lg-d4 { animation-delay: .38s; } .lg-d5 { animation-delay: .48s; } .lg-d6 { animation-delay: .58s; } .lg-d7 { animation-delay: .68s; }
+.lg-form { animation: lgDesdeDerecha .8s var(--lg-ease) .1s both; }
+.lg-foto { animation: lgZoom 22s ease-in-out infinite alternate; transform-origin: 60% 40%; will-change: transform; }
+
+/* Brillos de fondo detrás del formulario */
+.lg-aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.lg-aurora i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; }
+.lg-aurora i:nth-child(1) { width: 380px; height: 380px; right: -120px; top: -100px; background: radial-gradient(circle, rgba(26,171,240,.35), transparent 70%); animation: lgAurora1 14s ease-in-out infinite; }
+.lg-aurora i:nth-child(2) { width: 320px; height: 320px; left: -100px; bottom: -80px; background: radial-gradient(circle, rgba(8,145,178,.28), transparent 70%); animation: lgAurora2 17s ease-in-out infinite; }
+
+/* Ruta de picking animada sobre la foto */
+.lg-plano { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; mix-blend-mode: screen; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 72%); mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 72%); }
+.lg-plano .rk { fill: rgba(148, 197, 255, .10); stroke: rgba(148, 197, 255, .22); stroke-width: 1; }
+.lg-plano .ruta { fill: none; stroke: var(--lg-azul); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: lgRuta 4.5s var(--lg-ease) .6s forwards; filter: drop-shadow(0 0 6px rgba(26,171,240,.8)); }
+.lg-plano .parada { fill: #F97316; animation: lgParada 2.4s ease-in-out infinite; }
+.lg-plano .parada:nth-of-type(2) { animation-delay: .4s; } .lg-plano .parada:nth-of-type(3) { animation-delay: .8s; } .lg-plano .parada:nth-of-type(4) { animation-delay: 1.2s; }
+.lg-plano .punto { fill: #fff; filter: drop-shadow(0 0 6px #fff); }
+
+/* Campos */
+.lg-campo { transition: border-color .2s, box-shadow .25s var(--lg-ease), background-color .2s, transform .2s var(--lg-ease); }
+.lg-campo:focus { border-color: var(--lg-azul) !important; box-shadow: 0 0 0 4px rgba(26,171,240,.14); background: #fff; outline: none; }
+.lg-campo:hover:not(:focus) { border-color: #CBD5E1; }
+
+/* Botón: brillo al pasar, onda al pulsar, estados de carga y éxito */
+.lg-boton { position: relative; overflow: hidden; isolation: isolate; transition: transform .2s var(--lg-ease), box-shadow .25s, background .3s; }
+.lg-boton:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(26,171,240,.42) !important; }
+.lg-boton:not(:disabled):active { transform: translateY(0) scale(.98); }
+.lg-boton::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); transform: translateX(-120%) skewX(-18deg); z-index: -1; }
+.lg-boton:not(:disabled):hover::after { animation: lgBrillo .9s var(--lg-ease); }
+.lg-boton.lg-ok { background: linear-gradient(135deg, #16A34A, #15803D) !important; box-shadow: 0 10px 28px rgba(22,163,74,.35) !important; }
+.lg-check { stroke-dasharray: 24; stroke-dashoffset: 24; animation: lgCheck .45s var(--lg-ease) .1s forwards; }
+.lg-onda { position: absolute; border-radius: 50%; background: rgba(255,255,255,.45); pointer-events: none; transform: translate(-50%, -50%) scale(0); animation: lgOnda .65s var(--lg-ease) forwards; }
+.lg-tiembla { animation: lgTiembla .45s cubic-bezier(.36,.07,.19,.97) both; }
+
+/* Transición al panel: cortina circular desde el botón */
+.lg-cortina { position: fixed; inset: 0; z-index: 100; background: radial-gradient(circle at 50% 45%, #12305A 0%, #0B1324 60%, #070D1A 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; animation: lgCortina .75s cubic-bezier(.7,0,.3,1) forwards; }
+.lg-cortina .lg-logo { animation: lgLatido 1.4s ease-in-out infinite; }
+.lg-cortina .lg-barra { width: 170px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.lg-cortina .lg-barra i { display: block; width: 40%; height: 100%; background: linear-gradient(90deg, transparent, var(--lg-azul), transparent); animation: lgCarga 1s ease-in-out infinite; }
+.lg-cortina p { color: #8FA0BC; font-size: 13px; letter-spacing: .02em; }
+
+.lg-chip { transition: transform .25s var(--lg-ease), background .25s, border-color .25s; }
+.lg-chip:hover { transform: translateY(-2px); background: rgba(26,171,240,.16); border-color: rgba(26,171,240,.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-entra, .lg-form, .lg-foto, .lg-aurora i, .lg-plano .ruta, .lg-plano .parada, .lg-cortina, .lg-cortina .lg-logo, .lg-cortina .lg-barra i { animation: none !important; }
+  .lg-plano .ruta { stroke-dashoffset: 0; }
+  .lg-plano .punto { display: none; }
+}
