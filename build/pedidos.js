@@ -521,6 +521,7 @@ ESTADO.rutaSel = ''; ESTADO.rutas = [];
 function rutasSeleccionadas() {
   var s = ESTADO.rutaSel, r = [];
   if (!s) return r;
+  if (s === 'opt') return (typeof OPT !== 'undefined' && OPT.rutas) ? OPT.rutas.slice() : r;
   if (s.indexOf('prop:') === 0) {
     var i = Number(s.slice(5)), o = PK.propuestas && PK.propuestas[i];
     if (o) r.push(ruta3D(o, 'Lote propuesto ' + (i + 1), COLORES_RUTA[0], s));
@@ -543,13 +544,14 @@ function pintarControlRutas() {
       '<option value="">' + (L.length ? 'Rutas de picking: ninguna' : 'Sin lotes de picking abiertos') + '</option>' +
       (L.length > 1 ? '<option value="todos"' + (s === 'todos' ? ' selected' : '') + '>Todos los lotes abiertos (' + L.length + ')</option>' : '') +
       L.map(function (l) { return '<option value="' + esc(l.id) + '"' + (s === l.id ? ' selected' : '') + '>● ' + esc(l.id) + ' · ' + l.pedidos.length + ' pedidos · ' + l.ruta.length + ' paradas</option>'; }).join('') +
-      (s.indexOf('prop:') === 0 ? '<option value="' + esc(s) + '" selected>Lote propuesto ' + (Number(s.slice(5)) + 1) + ' (sin crear)</option>' : '') + '</select>';
+      (s.indexOf('prop:') === 0 ? '<option value="' + esc(s) + '" selected>Lote propuesto ' + (Number(s.slice(5)) + 1) + ' (sin crear)</option>' : '') +
+      (s === 'opt' ? '<option value="opt" selected>Sugerencia de reubicación</option>' : '') + '</select>';
   }
   if (!b) return;
   var R = ESTADO.rutas || [];
   if (!R.length) { b.style.display = 'none'; return; }
   b.style.display = '';
-  var botones = '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">Volver al picking</button><button class="btn mini" data-accion="quitarRuta">Quitar ' + (R.length > 1 ? 'rutas' : 'ruta') + '</button>';
+  var botones = '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">' + (ESTADO.rutaSel === 'opt' ? 'Volver a optimizar' : 'Volver al picking') + '</button><button class="btn mini" data-accion="quitarRuta">Quitar ' + (R.length > 1 ? 'rutas' : 'ruta') + '</button>';
   if (R.length === 1) {
     var r = R[0], ah = r.metrosBase > r.metros ? (r.metrosBase - r.metros) / r.metrosBase * 100 : 0;
     b.innerHTML = '<i class="pk-color" style="background:' + r.color + '"></i><b>' + esc(r.titulo) + '</b><span>' + r.paradas.length + ' paradas · ' + num(r.paradas.reduce(function (t, p) { return t + p.uds; }, 0)) + ' uds · ' + metros(r.metros) +
@@ -634,7 +636,7 @@ ACCIONES.lote3d = function (id) { if (lotePorId(id)) ir3D(id); };
 ACCIONES.todos3d = function () { ir3D(lotesAbiertos().length > 1 ? 'todos' : (lotesAbiertos()[0] || {}).id || ''); };
 ACCIONES.prop3d = function (i) { if (PK.propuestas && PK.propuestas[Number(i)]) ir3D('prop:' + Number(i)); };
 ACCIONES.quitarRuta = function () { ESTADO.rutaSel = ''; aplicarRutas(false); };
-ACCIONES.volverPicking = function () { mostrar('picking'); };
+ACCIONES.volverPicking = function () { mostrar(ESTADO.rutaSel === 'opt' ? 'optimizar' : 'picking'); };
 ACCIONES.repetirRuta = function () { BODEGA.ruta(false); };
 
 /** Confirmación propia (sin diálogos del navegador). Segundo clic en 4 s = confirmar. */
@@ -660,3 +662,44 @@ function enlazarPedidos() {
 // Insignia del riel: pedidos pendientes
 var pintarTodoPedidos = pintarTodo;
 pintarTodo = function () { pintarTodoPedidos(); var e = $('ins-pedidos'); if (e) e.textContent = pedidosDe('Pendiente').length || ''; };
+
+/* ---------- Inicio: operación de bodega y picking ---------- */
+var pintarInicioBase = PINTAR.inicio;
+PINTAR.inicio = function () { pintarInicioBase(); pintarInicioOperacion(); };
+function pintarInicioOperacion() {
+  if (!$('i-op-kpis')) return;
+  var pend = pedidosDe('Pendiente'), prep = pedidosDe('En preparación'), L = lotesAbiertos(), cfg = cfgPicking(), con3d = tiene('posiciones');
+  var urg = pend.filter(function (p) { return p.prioridad === 'Urgente'; }), hoy = pedidosDe('Despachado').filter(function (p) { return String(p.despachado).slice(0, 10) === D.hoy; });
+  var desde = new Date(C.hoy.getTime() - 30 * 864e5).toISOString().slice(0, 10);
+  var rec = (D.lotes || []).filter(function (l) { return l.estado !== 'Cancelado' && l.creado.slice(0, 10) >= desde; });
+  var ahM = rec.reduce(function (s, l) { return s + Math.max(0, l.metrosBase - l.metros); }, 0), baseM = rec.reduce(function (s, l) { return s + Number(l.metrosBase); }, 0);
+  var total = D.ubicaciones.length, libres = D.ubicaciones.filter(function (u) { return !u.sku; }).length;
+  var uds = function (l) { return l.reduce(function (s, p) { return s + unidadesPedido(p); }, 0); };
+  $('i-op-kpis').innerHTML =
+    (con3d ? kpi('Lotes de picking activos', num(L.length), L.length ? num(prep.length) + ' pedidos en preparación' : 'Ningún carro en curso', L.length ? 'bien' : '') : '') +
+    kpi('Pedidos por preparar', num(pend.length), urg.length ? '<span class="mal">' + urg.length + ' urgentes</span> · ' + num(uds(pend)) + ' uds' : num(uds(pend)) + ' unidades', urg.length ? 'ojo' : '') +
+    kpi('Despachados hoy', num(hoy.length), num(uds(hoy)) + ' unidades', hoy.length ? 'bien' : '') +
+    (con3d ? kpi('Recorrido ahorrado · 30 días', metros(ahM), baseM ? pct(ahM / baseM * 100) + ' menos que pedido a pedido · ' + tiempo(ahM / cfg.velocidad) : 'Crea lotes para medirlo', ahM ? 'bien' : '') : '') +
+    kpi('Posiciones libres', num(libres), total ? pct(libres / total * 100) + ' de ' + num(total) + ' posiciones' : '');
+  $('i-op-kpis').style.setProperty('--c', con3d ? 5 : 3);
+  // Lotes en curso con su avance (paradas marcadas en la lista de picking)
+  $('i-lotes').innerHTML = L.length ? L.map(function (l) {
+    var h = Object.keys(hechosDe(l.id)).length, n = l.ruta.length || 1, p = Math.round(h / n * 100);
+    return '<div class="fila-barra i-lote"><div class="cab"><b><i class="pk-color" style="background:' + colorLote(l.id) + '"></i>' + esc(l.id) + '</b>' +
+      '<span>' + l.pedidos.length + ' pedidos · ' + h + '/' + l.ruta.length + ' paradas · ' + esc(l.responsable || 'sin preparador') + '</span></div>' +
+      '<div class="barra"><i style="width:' + Math.max(2, p) + '%;background:' + colorLote(l.id) + '"></i></div>' +
+      '<div class="pk-acc" style="margin-top:6px"><button class="btn mini" data-accion="verLote" data-id="' + esc(l.id) + '">Lista</button><button class="btn mini" data-accion="lote3d" data-id="' + esc(l.id) + '">Ruta 3D</button></div></div>';
+  }).join('') : '<div class="vacio">No hay carros en curso.' + (pend.length ? '<div class="pie-form" style="justify-content:center"><button class="btn mini primario escribe" data-vista="picking">Proponer lotes</button></div>' : '') + '</div>';
+  // Pedidos por preparar: urgentes primero
+  var cola = pend.slice().sort(function (a, b) { return (b.prioridad === 'Urgente') - (a.prioridad === 'Urgente') || (a.fecha < b.fecha ? -1 : 1); }).slice(0, 6);
+  $('i-pedidos').innerHTML = cola.length ? cola.map(function (p) {
+    return '<div class="item"><i class="punto" style="background:' + (p.prioridad === 'Urgente' ? COLOR.critico : COLOR.precaucion) + '"></i><div class="x"><b>' + esc(p.cliente) + '</b><span>' + esc(p.id) + ' · ' + p.lineas.length + ' productos' + (p.prioridad === 'Urgente' ? ' · urgente' : '') + '</span></div>' +
+      '<div class="y">' + num(unidadesPedido(p)) + ' uds<small>' + fecha(p.fecha) + '</small></div></div>';
+  }).join('') + (pend.length > 6 ? '<div class="pie-form" style="justify-content:center"><button class="btn mini" data-vista="pedidos">Ver los ' + pend.length + ' pedidos</button></div>' : '') : '<div class="vacio">No hay pedidos pendientes.</div>';
+  // Ocupación por pasillo
+  var pas = {}; D.ubicaciones.forEach(function (u) { var x = pas[u.pasillo] = pas[u.pasillo] || { t: 0, o: 0 }; x.t++; if (u.sku) x.o++; });
+  $('i-pasillos').innerHTML = Object.keys(pas).sort().map(function (k) {
+    var x = pas[k], p = x.o / x.t * 100;
+    return '<div class="fila-barra"><div class="cab"><b>Pasillo ' + esc(k) + '</b><span>' + num(x.o) + ' de ' + num(x.t) + ' · ' + pct(p) + '</span></div><div class="barra"><i style="width:' + p + '%;background:' + (p > 92 ? 'var(--rojo)' : p > 80 ? 'var(--ambar)' : 'var(--azul)') + '"></i></div></div>';
+  }).join('') || '<div class="vacio">Sin posiciones.</div>';
+}

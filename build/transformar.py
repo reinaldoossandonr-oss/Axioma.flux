@@ -533,6 +533,48 @@ js = cambiar(js, "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPed
 js = cambiar(js, "    $('cargando').style.display = 'none';\n", "    ocultarCargando();\n")
 
 
+# ---------------- Inicio con operación de bodega · Optimizar espacio (31/10/2026) ----------------
+cuerpo = cambiar(cuerpo, '<div class="rejilla kpis" id="i-kpis" style="--c:5"></div>',
+    '<div class="rejilla kpis" id="i-kpis" style="--c:5"></div>\n'
+    '        <div class="i-seccion"><h2>Operación de bodega y picking</h2><div class="pk-acc"><button class="btn mini" data-vista="pedidos">Pedidos</button><button class="btn mini" data-vista="picking" data-modulo="posiciones">Picking y rutas</button></div></div>\n'
+    '        <div class="rejilla kpis" id="i-op-kpis" style="--c:5"></div>\n'
+    '        <div class="rejilla" style="--c:3" data-ajustar>\n'
+    '          <div class="t" data-modulo="posiciones"><h3>Lotes en curso</h3><div class="sub">Avance de cada carro según su lista de picking</div><div id="i-lotes"></div></div>\n'
+    '          <div class="t"><h3>Pedidos por preparar</h3><div class="sub">Urgentes primero</div><div id="i-pedidos"></div></div>\n'
+    '          <div class="t" data-modulo="posiciones"><h3>Ocupación por pasillo</h3><div class="sub">Posiciones ocupadas sobre el total</div><div id="i-pasillos" style="max-height:300px;overflow:auto"></div></div>\n'
+    '        </div>\n'
+    '        <div class="i-seccion"><h2>Inventario</h2></div>')
+cuerpo = cambiar(cuerpo, '      <!-- AJUSTES (SaaS) -->', """      <section class="vista" id="v-optimizar">
+        <div class="rejilla kpis" id="op-kpis" style="--c:4"></div>
+        <div class="rejilla" style="--c:3">
+          <div class="t" id="op-sugerencias" style="grid-column:span 2;align-self:start"></div>
+          <div class="t" id="op-zonas" style="align-self:start"></div>
+        </div>
+      </section>
+      <!-- AJUSTES (SaaS) -->""")
+js = cambiar(js, "  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones']] },\n",
+                 "  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones'], ['optimizar', 'Optimizar espacio ✦']] },\n")
+js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */", "\n" + _aqui.joinpath("optimizar.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+css_panel += """
+/* ---- Inicio: secciones · Optimizar espacio ---- */
+.i-seccion{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 10px}
+.i-seccion h2{margin:0;font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--suave);font-weight:700}
+.i-lote{padding:9px 0;border-top:1px solid var(--linea)}.i-lote:first-child{border-top:0;padding-top:2px}
+.op-lista{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.op-sug{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--linea);border-radius:12px;padding:11px 12px;background:var(--tarjeta);transition:transform .22s var(--fx),box-shadow .22s,border-color .22s}
+.op-sug:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,27,45,.12)}
+.op-sug.sel{border-color:var(--verde);box-shadow:0 0 0 2px rgba(74,222,128,.25)}
+.op-num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,#10B981,#0EA5F0)}
+.op-cuerpo{display:flex;flex-direction:column;gap:8px;min-width:0}
+.op-paso{font-size:13px;line-height:1.4}
+.op-tag{display:inline-block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:999px;margin-right:6px}
+.op-tag.verde{background:rgba(16,185,129,.14);color:#059669}.op-tag.ambar{background:rgba(245,158,11,.16);color:#B45309}
+.op-desde{font-size:12.5px;margin-top:3px;font-weight:600}.op-desde i{font-style:normal;color:var(--azul);font-weight:800;margin:0 4px}
+.op-ahorro{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.op-ahorro b{font-size:18px;color:var(--verde)}.op-ahorro small{font-size:11px;color:var(--suave);margin-bottom:6px}
+@media(max-width:760px){.op-sug{grid-template-columns:30px minmax(0,1fr)}.op-ahorro{grid-column:1/-1;align-items:flex-start;text-align:left}}
+"""
+
 # ---------------- Escritura ----------------
 app = FRONT / "src/app/app"
 app.mkdir(parents=True, exist_ok=True)

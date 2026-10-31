@@ -40,6 +40,8 @@ body.ia-abierto #ia-panel{transform:none}
 .ia-pensando i{width:7px;height:7px;border-radius:50%;background:var(--azul);animation:iaPunto 1.2s infinite}
 .ia-pensando i:nth-child(2){animation-delay:.15s}.ia-pensando i:nth-child(3){animation-delay:.3s}
 #ia-sugerencias{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+#ia-sugerencias.compacto{flex-wrap:nowrap;overflow-x:auto;padding:8px 16px 6px;border-top:1px solid var(--linea);scrollbar-width:thin;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+#ia-sugerencias.compacto .ia-sug{flex:none;white-space:nowrap}
 .ia-sug{border:1px solid var(--linea);background:var(--tarjeta2);color:var(--texto);border-radius:999px;padding:6px 11px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .2s,background .2s,transform .16s var(--fx)}
 .ia-sug:hover{border-color:var(--azul);background:rgba(14,165,240,.08);transform:translateY(-1px)}
 #ia-form{display:flex;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--linea)}

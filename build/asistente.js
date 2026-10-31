@@ -4,8 +4,8 @@
    1) Con IA: Edge Function "asistente-flux" (Claude) devuelve la consulta.  2) Sin IA: un intérprete local reconoce las
    preguntas habituales. El resultado se muestra en tabla y se puede resaltar en la bodega 3D.                            */
 var IA = { abierto: false, mensajes: [], ocupado: false, modo: '' };
-var IA_SUGERENCIAS = ['¿Qué productos llevan 60 días sin venderse?', 'Productos con riesgo de quiebre', '¿Dónde está el taladro?',
-  'Pedidos urgentes pendientes', 'Posiciones libres en el pasillo B', 'Productos de baja rotación'];
+var IA_SUGERENCIAS = ['Productos con riesgo de quiebre', 'Pedidos urgentes pendientes', 'Lotes de picking en curso', '¿Qué productos llevan 60 días sin venderse?',
+  'Posiciones libres en el pasillo B', 'Productos de baja rotación', 'Top 5 productos más vendidos', 'Resumen de la bodega'];
 
 function iaNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim(); }
 
@@ -146,7 +146,9 @@ function iaEjecutar(q) {
 function iaTextoResultado(r) {
   var q = r.q, n = r.total;
   if (q.tipo === 'resumen') return 'Este es el estado general de la bodega:';
-  if (!n) return 'No encontré resultados para esa pregunta. Prueba con otras palabras o con una de las sugerencias.';
+  if (!n) return q.texto ? 'No encontré «' + q.texto + '» en tu catálogo. Revisa el nombre o el SKU, o prueba con una de las sugerencias.' :
+    q.tipo === 'pedidos' ? 'Ahora mismo no hay pedidos que cumplan esa condición.' : q.tipo === 'lotes' ? 'No hay lotes de picking en curso. Puedes proponerlos en Pedidos › Picking y rutas.' :
+    'Ahora mismo no hay resultados para esa condición. Prueba con otras palabras o con una de las sugerencias.';
   var que = q.tipo === 'pedidos' ? (n === 1 ? 'pedido' : 'pedidos') : q.tipo === 'lotes' ? (n === 1 ? 'lote en curso' : 'lotes en curso') : q.tipo === 'posiciones' ? (n === 1 ? 'posición' : 'posiciones') : (n === 1 ? 'producto' : 'productos');
   return (q.limite && n <= q.limite ? 'Estos son los ' + num(n) + ' ' : 'Encontré ' + num(n) + ' ') + que + (r.ids.length && q.tipo !== 'posiciones' ? ' en ' + num(r.ids.length) + ' posiciones de la bodega' : '') + '.';
 }
@@ -177,7 +179,8 @@ function iaPintar() {
   }).join('');
   if (IA.ocupado) h += '<div class="ia-msg flux ia-pensando"><i></i><i></i><i></i></div>';
   $('ia-mensajes').innerHTML = h;
-  $('ia-sugerencias').innerHTML = IA.mensajes.length > 2 ? '' : IA_SUGERENCIAS.map(function (s) { return '<button type="button" class="ia-sug" data-ia="' + esc(s) + '">' + esc(s) + '</button>'; }).join('');
+  $('ia-sugerencias').className = IA.mensajes.length ? 'compacto' : '';
+  $('ia-sugerencias').innerHTML = IA_SUGERENCIAS.map(function (s) { return '<button type="button" class="ia-sug" data-ia="' + esc(s) + '">' + esc(s) + '</button>'; }).join('');
   var c = $('ia-mensajes'); c.scrollTop = c.scrollHeight;
 }
 
