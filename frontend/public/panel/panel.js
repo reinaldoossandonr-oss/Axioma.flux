@@ -5,7 +5,7 @@ var ESTADO = { vista: 'inicio', periodo: 90, color: 'rotacion', sel: null, pasil
 var SECCIONES = {
   inicio: { titulo: 'Inicio', tabs: [['inicio', 'Resumen']] },
   inventario: { titulo: 'Inventario', tabs: [['inventario', 'Dashboard'], ['catalogo', 'Catálogo'], ['stock', 'Stock y quiebres'], ['reposicion', 'Reposición'], ['movimientos', 'Movimientos']] },
-  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones']] },
+  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones'], ['optimizar', 'Optimizar espacio ✦']] },
   pedidos: { titulo: 'Pedidos y despachos', tabs: [['pedidos', 'Pedidos'], ['picking', 'Picking y rutas'], ['ventas', 'Ventas'], ['comercial', 'Análisis de ventas']] },
   embudo: { titulo: 'CRM comercial', tabs: [['embudo', 'Embudo de ventas'], ['equipo', 'Equipo comercial']] },
   finanzas: { titulo: 'Finanzas', tabs: [['finanzas', 'Dashboard'], ['flujo', 'Flujo de caja'], ['cuentas', 'Facturas'], ['pagos', 'Cobros y pagos'], ['gastos', 'Gastos']] },
@@ -3114,6 +3114,7 @@ ESTADO.rutaSel = ''; ESTADO.rutas = [];
 function rutasSeleccionadas() {
   var s = ESTADO.rutaSel, r = [];
   if (!s) return r;
+  if (s === 'opt') return (typeof OPT !== 'undefined' && OPT.rutas) ? OPT.rutas.slice() : r;
   if (s.indexOf('prop:') === 0) {
     var i = Number(s.slice(5)), o = PK.propuestas && PK.propuestas[i];
     if (o) r.push(ruta3D(o, 'Lote propuesto ' + (i + 1), COLORES_RUTA[0], s));
@@ -3136,13 +3137,14 @@ function pintarControlRutas() {
       '<option value="">' + (L.length ? 'Rutas de picking: ninguna' : 'Sin lotes de picking abiertos') + '</option>' +
       (L.length > 1 ? '<option value="todos"' + (s === 'todos' ? ' selected' : '') + '>Todos los lotes abiertos (' + L.length + ')</option>' : '') +
       L.map(function (l) { return '<option value="' + esc(l.id) + '"' + (s === l.id ? ' selected' : '') + '>● ' + esc(l.id) + ' · ' + l.pedidos.length + ' pedidos · ' + l.ruta.length + ' paradas</option>'; }).join('') +
-      (s.indexOf('prop:') === 0 ? '<option value="' + esc(s) + '" selected>Lote propuesto ' + (Number(s.slice(5)) + 1) + ' (sin crear)</option>' : '') + '</select>';
+      (s.indexOf('prop:') === 0 ? '<option value="' + esc(s) + '" selected>Lote propuesto ' + (Number(s.slice(5)) + 1) + ' (sin crear)</option>' : '') +
+      (s === 'opt' ? '<option value="opt" selected>Sugerencia de reubicación</option>' : '') + '</select>';
   }
   if (!b) return;
   var R = ESTADO.rutas || [];
   if (!R.length) { b.style.display = 'none'; return; }
   b.style.display = '';
-  var botones = '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">Volver al picking</button><button class="btn mini" data-accion="quitarRuta">Quitar ' + (R.length > 1 ? 'rutas' : 'ruta') + '</button>';
+  var botones = '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">' + (ESTADO.rutaSel === 'opt' ? 'Volver a optimizar' : 'Volver al picking') + '</button><button class="btn mini" data-accion="quitarRuta">Quitar ' + (R.length > 1 ? 'rutas' : 'ruta') + '</button>';
   if (R.length === 1) {
     var r = R[0], ah = r.metrosBase > r.metros ? (r.metrosBase - r.metros) / r.metrosBase * 100 : 0;
     b.innerHTML = '<i class="pk-color" style="background:' + r.color + '"></i><b>' + esc(r.titulo) + '</b><span>' + r.paradas.length + ' paradas · ' + num(r.paradas.reduce(function (t, p) { return t + p.uds; }, 0)) + ' uds · ' + metros(r.metros) +
@@ -3227,7 +3229,7 @@ ACCIONES.lote3d = function (id) { if (lotePorId(id)) ir3D(id); };
 ACCIONES.todos3d = function () { ir3D(lotesAbiertos().length > 1 ? 'todos' : (lotesAbiertos()[0] || {}).id || ''); };
 ACCIONES.prop3d = function (i) { if (PK.propuestas && PK.propuestas[Number(i)]) ir3D('prop:' + Number(i)); };
 ACCIONES.quitarRuta = function () { ESTADO.rutaSel = ''; aplicarRutas(false); };
-ACCIONES.volverPicking = function () { mostrar('picking'); };
+ACCIONES.volverPicking = function () { mostrar(ESTADO.rutaSel === 'opt' ? 'optimizar' : 'picking'); };
 ACCIONES.repetirRuta = function () { BODEGA.ruta(false); };
 
 /** Confirmación propia (sin diálogos del navegador). Segundo clic en 4 s = confirmar. */
@@ -3253,6 +3255,47 @@ function enlazarPedidos() {
 // Insignia del riel: pedidos pendientes
 var pintarTodoPedidos = pintarTodo;
 pintarTodo = function () { pintarTodoPedidos(); var e = $('ins-pedidos'); if (e) e.textContent = pedidosDe('Pendiente').length || ''; };
+
+/* ---------- Inicio: operación de bodega y picking ---------- */
+var pintarInicioBase = PINTAR.inicio;
+PINTAR.inicio = function () { pintarInicioBase(); pintarInicioOperacion(); };
+function pintarInicioOperacion() {
+  if (!$('i-op-kpis')) return;
+  var pend = pedidosDe('Pendiente'), prep = pedidosDe('En preparación'), L = lotesAbiertos(), cfg = cfgPicking(), con3d = tiene('posiciones');
+  var urg = pend.filter(function (p) { return p.prioridad === 'Urgente'; }), hoy = pedidosDe('Despachado').filter(function (p) { return String(p.despachado).slice(0, 10) === D.hoy; });
+  var desde = new Date(C.hoy.getTime() - 30 * 864e5).toISOString().slice(0, 10);
+  var rec = (D.lotes || []).filter(function (l) { return l.estado !== 'Cancelado' && l.creado.slice(0, 10) >= desde; });
+  var ahM = rec.reduce(function (s, l) { return s + Math.max(0, l.metrosBase - l.metros); }, 0), baseM = rec.reduce(function (s, l) { return s + Number(l.metrosBase); }, 0);
+  var total = D.ubicaciones.length, libres = D.ubicaciones.filter(function (u) { return !u.sku; }).length;
+  var uds = function (l) { return l.reduce(function (s, p) { return s + unidadesPedido(p); }, 0); };
+  $('i-op-kpis').innerHTML =
+    (con3d ? kpi('Lotes de picking activos', num(L.length), L.length ? num(prep.length) + ' pedidos en preparación' : 'Ningún carro en curso', L.length ? 'bien' : '') : '') +
+    kpi('Pedidos por preparar', num(pend.length), urg.length ? '<span class="mal">' + urg.length + ' urgentes</span> · ' + num(uds(pend)) + ' uds' : num(uds(pend)) + ' unidades', urg.length ? 'ojo' : '') +
+    kpi('Despachados hoy', num(hoy.length), num(uds(hoy)) + ' unidades', hoy.length ? 'bien' : '') +
+    (con3d ? kpi('Recorrido ahorrado · 30 días', metros(ahM), baseM ? pct(ahM / baseM * 100) + ' menos que pedido a pedido · ' + tiempo(ahM / cfg.velocidad) : 'Crea lotes para medirlo', ahM ? 'bien' : '') : '') +
+    kpi('Posiciones libres', num(libres), total ? pct(libres / total * 100) + ' de ' + num(total) + ' posiciones' : '');
+  $('i-op-kpis').style.setProperty('--c', con3d ? 5 : 3);
+  // Lotes en curso con su avance (paradas marcadas en la lista de picking)
+  $('i-lotes').innerHTML = L.length ? L.map(function (l) {
+    var h = Object.keys(hechosDe(l.id)).length, n = l.ruta.length || 1, p = Math.round(h / n * 100);
+    return '<div class="fila-barra i-lote"><div class="cab"><b><i class="pk-color" style="background:' + colorLote(l.id) + '"></i>' + esc(l.id) + '</b>' +
+      '<span>' + l.pedidos.length + ' pedidos · ' + h + '/' + l.ruta.length + ' paradas · ' + esc(l.responsable || 'sin preparador') + '</span></div>' +
+      '<div class="barra"><i style="width:' + Math.max(2, p) + '%;background:' + colorLote(l.id) + '"></i></div>' +
+      '<div class="pk-acc" style="margin-top:6px"><button class="btn mini" data-accion="verLote" data-id="' + esc(l.id) + '">Lista</button><button class="btn mini" data-accion="lote3d" data-id="' + esc(l.id) + '">Ruta 3D</button></div></div>';
+  }).join('') : '<div class="vacio">No hay carros en curso.' + (pend.length ? '<div class="pie-form" style="justify-content:center"><button class="btn mini primario escribe" data-vista="picking">Proponer lotes</button></div>' : '') + '</div>';
+  // Pedidos por preparar: urgentes primero
+  var cola = pend.slice().sort(function (a, b) { return (b.prioridad === 'Urgente') - (a.prioridad === 'Urgente') || (a.fecha < b.fecha ? -1 : 1); }).slice(0, 6);
+  $('i-pedidos').innerHTML = cola.length ? cola.map(function (p) {
+    return '<div class="item"><i class="punto" style="background:' + (p.prioridad === 'Urgente' ? COLOR.critico : COLOR.precaucion) + '"></i><div class="x"><b>' + esc(p.cliente) + '</b><span>' + esc(p.id) + ' · ' + p.lineas.length + ' productos' + (p.prioridad === 'Urgente' ? ' · urgente' : '') + '</span></div>' +
+      '<div class="y">' + num(unidadesPedido(p)) + ' uds<small>' + fecha(p.fecha) + '</small></div></div>';
+  }).join('') + (pend.length > 6 ? '<div class="pie-form" style="justify-content:center"><button class="btn mini" data-vista="pedidos">Ver los ' + pend.length + ' pedidos</button></div>' : '') : '<div class="vacio">No hay pedidos pendientes.</div>';
+  // Ocupación por pasillo
+  var pas = {}; D.ubicaciones.forEach(function (u) { var x = pas[u.pasillo] = pas[u.pasillo] || { t: 0, o: 0 }; x.t++; if (u.sku) x.o++; });
+  $('i-pasillos').innerHTML = Object.keys(pas).sort().map(function (k) {
+    var x = pas[k], p = x.o / x.t * 100;
+    return '<div class="fila-barra"><div class="cab"><b>Pasillo ' + esc(k) + '</b><span>' + num(x.o) + ' de ' + num(x.t) + ' · ' + pct(p) + '</span></div><div class="barra"><i style="width:' + p + '%;background:' + (p > 92 ? 'var(--rojo)' : p > 80 ? 'var(--ambar)' : 'var(--azul)') + '"></i></div></div>';
+  }).join('') || '<div class="vacio">Sin posiciones.</div>';
+}
 
 /* ===================== EFECTOS: ONDAS, CONTADORES Y SALIDA DE LA PANTALLA DE CARGA (Axioma Flux) ===================== */
 var FX_QUIETO = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -3303,8 +3346,8 @@ function ocultarCargando() {
    1) Con IA: Edge Function "asistente-flux" (Claude) devuelve la consulta.  2) Sin IA: un intérprete local reconoce las
    preguntas habituales. El resultado se muestra en tabla y se puede resaltar en la bodega 3D.                            */
 var IA = { abierto: false, mensajes: [], ocupado: false, modo: '' };
-var IA_SUGERENCIAS = ['¿Qué productos llevan 60 días sin venderse?', 'Productos con riesgo de quiebre', '¿Dónde está el taladro?',
-  'Pedidos urgentes pendientes', 'Posiciones libres en el pasillo B', 'Productos de baja rotación'];
+var IA_SUGERENCIAS = ['Productos con riesgo de quiebre', 'Pedidos urgentes pendientes', 'Lotes de picking en curso', '¿Qué productos llevan 60 días sin venderse?',
+  'Posiciones libres en el pasillo B', 'Productos de baja rotación', 'Top 5 productos más vendidos', 'Resumen de la bodega'];
 
 function iaNorm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim(); }
 
@@ -3445,7 +3488,9 @@ function iaEjecutar(q) {
 function iaTextoResultado(r) {
   var q = r.q, n = r.total;
   if (q.tipo === 'resumen') return 'Este es el estado general de la bodega:';
-  if (!n) return 'No encontré resultados para esa pregunta. Prueba con otras palabras o con una de las sugerencias.';
+  if (!n) return q.texto ? 'No encontré «' + q.texto + '» en tu catálogo. Revisa el nombre o el SKU, o prueba con una de las sugerencias.' :
+    q.tipo === 'pedidos' ? 'Ahora mismo no hay pedidos que cumplan esa condición.' : q.tipo === 'lotes' ? 'No hay lotes de picking en curso. Puedes proponerlos en Pedidos › Picking y rutas.' :
+    'Ahora mismo no hay resultados para esa condición. Prueba con otras palabras o con una de las sugerencias.';
   var que = q.tipo === 'pedidos' ? (n === 1 ? 'pedido' : 'pedidos') : q.tipo === 'lotes' ? (n === 1 ? 'lote en curso' : 'lotes en curso') : q.tipo === 'posiciones' ? (n === 1 ? 'posición' : 'posiciones') : (n === 1 ? 'producto' : 'productos');
   return (q.limite && n <= q.limite ? 'Estos son los ' + num(n) + ' ' : 'Encontré ' + num(n) + ' ') + que + (r.ids.length && q.tipo !== 'posiciones' ? ' en ' + num(r.ids.length) + ' posiciones de la bodega' : '') + '.';
 }
@@ -3476,7 +3521,8 @@ function iaPintar() {
   }).join('');
   if (IA.ocupado) h += '<div class="ia-msg flux ia-pensando"><i></i><i></i><i></i></div>';
   $('ia-mensajes').innerHTML = h;
-  $('ia-sugerencias').innerHTML = IA.mensajes.length > 2 ? '' : IA_SUGERENCIAS.map(function (s) { return '<button type="button" class="ia-sug" data-ia="' + esc(s) + '">' + esc(s) + '</button>'; }).join('');
+  $('ia-sugerencias').className = IA.mensajes.length ? 'compacto' : '';
+  $('ia-sugerencias').innerHTML = IA_SUGERENCIAS.map(function (s) { return '<button type="button" class="ia-sug" data-ia="' + esc(s) + '">' + esc(s) + '</button>'; }).join('');
   var c = $('ia-mensajes'); c.scrollTop = c.scrollHeight;
 }
 
@@ -3533,6 +3579,154 @@ function enlazarAsistente() {
   });
   iaPintar();
 }
+
+/* ===================== OPTIMIZACIÓN DE ESPACIO (slotting inteligente) =====================
+   Cruza la demanda de cada producto (líneas de venta de los últimos 90 días) con la distancia real a pie desde el despacho
+   de cada posición (pasillos + altura). Propone:
+   · Mover: un producto de alta rotación lejos del despacho pasa a un hueco libre de la zona preferente.
+   · Intercambio en dos pasos: un producto lento que ocupa la zona preferente sale a un hueco del fondo y su sitio lo ocupa uno rápido.
+   El ahorro es una estimación: metros de ida y vuelta por línea de pedido, al mes, si cada línea se recogiera por separado.
+   Aplicar una sugerencia registra movimientos de tipo «Transferencia» (el stock total no cambia).                                  */
+var OPT = { res: null, rutas: [], sel: null };
+
+function distanciaDespacho(G, u) {
+  var m = Infinity;
+  (G.acceso[Number(u.y)] || [0]).forEach(function (c) { var d = distancia(G, G.deposito, { c: c, x: Number(u.x) }); if (d < m) m = d; });
+  return m + (Number(u.nivel) - 1) * 1.2;   // cada nivel de altura cuesta como ~1,2 m más de recorrido
+}
+
+function analizarBodega() {
+  var G = geometriaBodega(); if (!G) return null;
+  // Demanda: líneas de venta de los últimos 90 días por producto
+  var lineas = {};
+  D.ventas.forEach(function (v) { var d = diasDesde(v[1]); if (d >= 0 && d < 90) lineas[v[2]] = (lineas[v[2]] || 0) + 1; });
+  var P = D.ubicaciones.map(function (u) { return { u: u, x: C.ubi[u.id], d: distanciaDespacho(G, u) }; });
+  var ocup = P.filter(function (p) { return p.x.it; }), libres = P.filter(function (p) { return !p.x.it; }).sort(function (a, b) { return a.d - b.d; });
+  // Cara de picking de cada producto = su posición más cercana al despacho (de ahí se recoge); el resto es reserva
+  var prod = {};
+  ocup.forEach(function (p) {
+    var id = p.x.it.p.id, x = prod[id] = prod[id] || { r: lineas[id] || 0, pos: [] };
+    x.pos.push(p); p.r = x.r;
+  });
+  Object.keys(prod).forEach(function (id) { var x = prod[id]; x.pos.sort(function (a, b) { return a.d - b.d; }); x.cara = x.pos[0]; x.pos.forEach(function (p, i) { p.cara = i === 0; p.prod = x; }); });
+  var q = function (arr, f) { return arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * f))] : 0; };
+  var ds = P.map(function (p) { return p.d; }).sort(function (a, b) { return a - b; }), corte = q(ds, 0.3);
+  var rs = Object.keys(prod).map(function (id) { return prod[id].r; }).sort(function (a, b) { return a - b; }), rAlta = q(rs, 0.7), rBaja = q(rs, 0.3);
+  var mes = 2 / 3;   // ida y vuelta · de 90 días a 1 mes
+  // Coste de sacar una posición de la zona preferente: solo cuenta si es la cara de picking (su producto pasaría a recogerse más lejos)
+  var costeSalir = function (b, nuevoD) {
+    if (!b.cara) return 0;
+    var sig = b.prod.pos[1] ? b.prod.pos[1].d : Infinity;
+    return b.r * Math.max(0, Math.min(sig, nuevoD) - b.d) * mes;
+  };
+  var subir = Object.keys(prod).map(function (id) { return prod[id].cara; })
+    .filter(function (p) { return p.r >= rAlta && p.r > 0 && p.d > corte; }).sort(function (a, b) { return b.r * b.d - a.r * a.d; });
+  var bajar = ocup.filter(function (p) { return p.d <= corte && (p.r <= rBaja || !p.cara); })
+    .sort(function (a, b) { return (a.cara ? 1 : 0) - (b.cara ? 1 : 0) || a.r - b.r || a.d - b.d; });
+  var lejanas = libres.slice().reverse(), usado = {}, sug = [];
+  subir.forEach(function (p) {
+    if (sug.length >= 40 || usado[p.u.id]) return;
+    var h = libres.filter(function (l) { return !usado[l.u.id] && l.d < p.d - 4 && l.d <= corte * 1.25; })[0];
+    var opA = h ? { tipo: 'mover', p: p, a: h, ahorro: p.r * (p.d - h.d) * mes } : null;
+    var b = bajar.filter(function (x) { return !usado[x.u.id] && x.prod !== p.prod && x.d < p.d - 4; })[0];
+    var lej = b && lejanas.filter(function (l) { return !usado[l.u.id] && l.d > b.d + 4; })[0];
+    var opB = b && lej ? { tipo: 'intercambio', p: p, a: b, lej: lej, ahorro: p.r * (p.d - b.d) * mes - costeSalir(b, lej.d) } : null;
+    var mejor = opA && (!opB || opA.ahorro >= opB.ahorro) ? opA : opB;
+    if (!mejor || mejor.ahorro <= 0) return;
+    usado[p.u.id] = usado[mejor.a.u.id] = 1; if (mejor.lej) usado[mejor.lej.u.id] = 1;
+    sug.push(mejor);
+  });
+  sug.sort(function (a, b) { return b.ahorro - a.ahorro; });
+  sug = sug.slice(0, 15);
+  // Zonas por distancia al despacho (rotación según el producto que ocupa cada posición)
+  var zonas = [['A · preferente', 0, corte], ['B · media', corte, q(ds, 0.7)], ['C · fondo', q(ds, 0.7), Infinity]].map(function (z, i) {
+    var en = P.filter(function (p) { return i === 0 ? p.d <= z[2] : i === 1 ? p.d > z[1] && p.d <= z[2] : p.d > z[1]; });
+    var oc = en.filter(function (p) { return p.x.it; });
+    return { nombre: z[0], total: en.length, ocupadas: oc.length, alta: oc.filter(function (p) { return p.r >= rAlta && p.r > 0; }).length, baja: oc.filter(function (p) { return p.r <= rBaja; }).length };
+  });
+  var actual = Object.keys(prod).reduce(function (s, id) { return s + prod[id].r * prod[id].cara.d * mes; }, 0), ahorro = sug.reduce(function (s, x) { return s + x.ahorro; }, 0);
+  return { sug: sug, zonas: zonas, subir: subir.length, bajar: bajar.filter(function (p) { return p.r <= rBaja; }).length, actual: actual, ahorro: ahorro, libres: libres.length, total: P.length, D: D };
+}
+
+function nombreDe(p) { return p.x.it ? p.x.it.p.nombre : 'Libre'; }
+
+PINTAR.optimizar = function () {
+  var cfg = cfgPicking();
+  if (!OPT.res || OPT.res.D !== D) { OPT.res = analizarBodega(); OPT.sel = null; }
+  var R = OPT.res;
+  if (!R) { $('op-kpis').innerHTML = ''; $('op-sugerencias').innerHTML = '<div class="vacio">La bodega no tiene posiciones configuradas.</div>'; $('op-zonas').innerHTML = ''; return; }
+  var horas = R.ahorro / cfg.velocidad;
+  $('op-kpis').innerHTML =
+    kpi('Ahorro estimado de recorrido', metros(R.ahorro) + '<small style="font-size:13px;font-weight:600"> /mes</small>', R.actual ? pct(R.ahorro / R.actual * 100) + ' del recorrido actual · ' + tiempo(horas) + ' de marcha' : '', R.ahorro ? 'bien' : '') +
+    kpi('Rápidos lejos del despacho', num(R.subir), 'Productos de alta rotación fuera de la zona A', R.subir ? 'ojo' : 'bien') +
+    kpi('Zona preferente ocupada por lentos', num(R.bajar), 'Posiciones de la zona A con baja rotación', R.bajar ? 'ojo' : 'bien') +
+    kpi('Huecos libres', num(R.libres), pct(R.libres / Math.max(1, R.total) * 100) + ' de la bodega');
+  var h = '<div class="pk-prop-cab"><div><h3>Sugerencias de reubicación</h3><div class="sub">Ordenadas por ahorro: acercar al despacho lo que más se vende y alejar lo que casi no rota</div></div>' +
+    (R.sug.length ? '<button class="btn primario escribe" data-accion="optAplicarTodas">Aplicar todas (' + R.sug.length + ')</button>' : '') + '</div>';
+  var L = lotesAbiertos();
+  if (L.length && R.sug.length) h += '<div class="aviso-demo" style="margin-top:10px">Hay ' + L.length + (L.length === 1 ? ' lote' : ' lotes') + ' de picking en curso: te recomendamos aplicar las reubicaciones cuando se despachen, para no cambiar sus rutas.</div>';
+  h += R.sug.length ? '<div class="op-lista">' + R.sug.map(function (s, i) {
+    var sel = OPT.sel === i, rap = s.p;
+    var cuerpo = s.tipo === 'mover'
+      ? '<div class="op-paso"><span class="op-tag verde">Mover</span><b>' + esc(nombreDe(rap)) + '</b> <span class="tenue">' + esc(rap.x.it.p.sku) + '</span><div class="op-desde">' + esc(rap.u.pos) + ' <i>→</i> ' + esc(s.a.u.pos) + ' <span class="tenue">· ' + metros(rap.d) + ' → ' + metros(s.a.d) + ' del despacho</span></div></div>'
+      : '<div class="op-paso"><span class="op-tag ambar">1 · Liberar</span><b>' + esc(nombreDe(s.a)) + '</b> <span class="tenue">baja rotación</span><div class="op-desde">' + esc(s.a.u.pos) + ' <i>→</i> ' + esc(s.lej.u.pos) + ' <span class="tenue">· al fondo</span></div></div>' +
+        '<div class="op-paso"><span class="op-tag verde">2 · Acercar</span><b>' + esc(nombreDe(rap)) + '</b> <span class="tenue">alta rotación</span><div class="op-desde">' + esc(rap.u.pos) + ' <i>→</i> ' + esc(s.a.u.pos) + ' <span class="tenue">· ' + metros(rap.d) + ' → ' + metros(s.a.d) + ' del despacho</span></div></div>';
+    return '<div class="op-sug' + (sel ? ' sel' : '') + '"><div class="op-num">' + (i + 1) + '</div><div class="op-cuerpo">' + cuerpo + '</div>' +
+      '<div class="op-ahorro"><b>−' + metros(s.ahorro) + '</b><small>al mes</small><div class="pk-acc"><button class="btn mini" data-accion="optVer3D" data-id="' + i + '">Ver en 3D</button><button class="btn mini primario escribe" data-accion="optAplicar" data-id="' + i + '">Aplicar</button></div></div></div>';
+  }).join('') + '</div>' : '<div class="vacio">La bodega ya está bien ordenada: no hay reubicaciones con ahorro relevante.</div>';
+  $('op-sugerencias').innerHTML = h;
+  $('op-zonas').innerHTML = '<h3>Zonas de la bodega</h3><div class="sub">Por distancia a pie al despacho (incluye la altura de cada nivel)</div>' +
+    R.zonas.map(function (z) {
+      var po = z.ocupadas ? z.alta / z.ocupadas * 100 : 0, pb = z.ocupadas ? z.baja / z.ocupadas * 100 : 0;
+      return '<div class="fila-barra"><div class="cab"><b>Zona ' + esc(z.nombre) + '</b><span>' + num(z.ocupadas) + ' de ' + num(z.total) + ' ocupadas</span></div>' +
+        '<div class="barra" style="height:12px"><i style="width:' + po + '%;background:var(--verde)"></i><i style="width:' + Math.max(0, 100 - po - pb) + '%;background:var(--pista2)"></i><i style="width:' + pb + '%;background:var(--rojo)"></i></div></div>';
+    }).join('') +
+    '<div class="leyenda"><span><i style="background:var(--verde)"></i>Alta rotación</span><span><i style="background:var(--pista2)"></i>Media</span><span><i style="background:var(--rojo)"></i>Baja</span></div>' +
+    '<p class="nota-form" style="margin-top:12px">Lo ideal: la zona A llena de verde y la C con el rojo. El ahorro es una estimación con las ventas de los últimos 90 días; con lotes de picking el recorrido real ya es menor.</p>';
+};
+
+/** Movimiento de una sugerencia dibujado en la bodega 3D (origen → destino por los pasillos). */
+function rutaMovimiento(G, desde, hasta, color, titulo) {
+  var nodo = function (p) { var c = (G.acceso[Number(p.u.y)] || [0]).slice().sort(function (a, b) { return Math.abs(G.corr[a].y - Number(p.u.y)) - Math.abs(G.corr[b].y - Number(p.u.y)); })[0]; return { c: c, x: Number(p.u.x) }; };
+  var a = nodo(desde), b = nodo(hasta), it = desde.x.it, uds = Math.max(1, desde.x.stock);
+  var parada = function (p, n, txt) { return { x: n.x, cy: G.corr[n.c].y, y: Number(p.u.y), z: Number(p.u.z), pos: p.u.pos, sku: p.u.pos, nombre: txt, uds: uds }; };
+  var pts = [[a.x, G.corr[a.c].y]].concat(tramoRuta(G, a, b)), largo = 0;
+  for (var i = 1; i < pts.length; i++) largo += Math.abs(pts[i][0] - pts[i - 1][0]) + Math.abs(pts[i][1] - pts[i - 1][1]);
+  return { id: 'opt', titulo: titulo, color: color, metros: largo, metrosBase: 0, puntos: pts, deposito: { x: G.deposito.x, y: G.corr[0].y },
+    paradas: [parada(desde, a, 'Sale: ' + (it ? it.p.nombre : '')), parada(hasta, b, 'Nuevo hueco')] };
+}
+ACCIONES.optVer3D = function (i) {
+  var s = OPT.res && OPT.res.sug[Number(i)], G = geometriaBodega(); if (!s || !G) return;
+  OPT.sel = Number(i);
+  OPT.rutas = s.tipo === 'mover' ? [rutaMovimiento(G, s.p, s.a, '#10B981', 'Sugerencia ' + (Number(i) + 1) + ' · mover')]
+    : [rutaMovimiento(G, s.a, s.lej, '#F59E0B', 'Sugerencia ' + (Number(i) + 1) + ' · 1 liberar'), rutaMovimiento(G, s.p, s.a, '#10B981', '2 · acercar')];
+  ir3D('opt');
+};
+
+function transferencias(s) {
+  var t = function (p, destino) { return { tipo: 'movimiento', tipoMov: 'Transferencia', sku: p.x.it.p.sku, cantidad: Math.max(1, p.x.stock), origen: p.u.id, destino: destino.u.id, liberarOrigen: true, responsable: 'Optimización de bodega' }; };
+  return s.tipo === 'mover' ? [t(s.p, s.a)] : [t(s.a, s.lej), t(s.p, s.a)];
+}
+function ejecutar(lista, fin) {
+  var hechos = 0, sig = function () {
+    if (!lista.length) { fin(hechos); return; }
+    servidor('guardarRegistro', lista.shift(), function () { hechos++; sig(); }, function () { fin(hechos); });
+  };
+  sig();
+}
+ACCIONES.optAplicar = function (i) {
+  var s = OPT.res && OPT.res.sug[Number(i)]; if (!s) return;
+  var txt = s.tipo === 'mover' ? 'mover ' + nombreDe(s.p) + ' a ' + s.a.u.pos : 'llevar ' + nombreDe(s.a) + ' al fondo y ' + nombreDe(s.p) + ' a ' + s.a.u.pos;
+  if (!confirmar('¿Aplicar la sugerencia ' + (Number(i) + 1) + ': ' + txt + '? Se registran transferencias de ubicación.')) return;
+  ejecutar(transferencias(s), function (n) { avisar(n + (n === 1 ? ' transferencia registrada.' : ' transferencias registradas.')); OPT.res = null; cargar(function () { mostrar('optimizar'); }); });
+};
+ACCIONES.optAplicarTodas = function () {
+  var S = (OPT.res && OPT.res.sug) || []; if (!S.length) return;
+  if (!confirmar('¿Aplicar las ' + S.length + ' sugerencias? Se registran las transferencias de ubicación en orden.')) return;
+  var b = document.querySelector('[data-accion="optAplicarTodas"]'); if (b) { b.disabled = true; b.textContent = 'Aplicando…'; }
+  var lista = []; S.forEach(function (s) { lista = lista.concat(transferencias(s)); });
+  ejecutar(lista, function (n) { avisar(n + ' transferencias registradas. La bodega quedó reordenada.'); OPT.res = null; cargar(function () { mostrar('optimizar'); }); });
+};
 
 /* ===================== ARRANQUE ===================== */
 (function () {
