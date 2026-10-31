@@ -55,6 +55,13 @@ const FUNCIONES: Record<string, Fn> = {
   intLote: (d) => rpc('int_lote', { p_sync: d.id, p_filas: d.filas }),
   intFinalizar: (d) => rpc('int_finalizar', { p_sync: d.id }),
   intErrores: (d) => rpc('int_errores', { p_sync: d.id }),
+  // Pedidos y despachos · picking
+  guardarPedido: (d) => rpc('guardar_pedido', { d }),
+  anularPedido: (d) => rpc('anular_pedido', { p_id: d.id }),
+  crearLote: (d) => rpc('crear_lote', { d }),
+  completarLote: (d) => rpc('completar_lote', { p_id: d.id }),
+  cancelarLote: (d) => rpc('cancelar_lote', { p_id: d.id }),
+  demoPedidos: (d) => rpc('demo_pedidos', { p_n: d.n ?? 24 }),
   crearEmpresa: (d) => edge('crear_empresa', d),
   crearUsuario: (d) => edge('crear_usuario', d),
   cambiarPassword: (d) => edge('cambiar_password', d),
