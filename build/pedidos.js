@@ -250,12 +250,21 @@ function mapaRuta(G, paradas) {
   return s + '</svg>';
 }
 
-/** Datos que necesita la bodega 3D para pintar la ruta. */
-function ruta3D(obj, titulo) {
+/** Colores de ruta por lote abierto (estables mientras el lote esté abierto). */
+var COLORES_RUTA = ['#0EA5F0', '#A855F7', '#F97316', '#10B981', '#EC4899', '#EAB308', '#6366F1', '#14B8A6'];
+function lotesAbiertos() { return ((D && D.lotes) || []).filter(function (l) { return l.estado === 'Abierto'; }).sort(function (a, b) { return a.id < b.id ? -1 : 1; }); }
+function colorLote(id) { var i = lotesAbiertos().map(function (l) { return l.id; }).indexOf(id); return COLORES_RUTA[Math.max(0, i) % COLORES_RUTA.length]; }
+
+/** Datos que necesita la bodega 3D para pintar una ruta: puntos del suelo y, por parada, producto y unidades a retirar. */
+function ruta3D(obj, titulo, color, id) {
   var G = geometriaBodega(); if (!G) return null;
-  return { titulo: titulo, metros: obj.metros, metrosBase: obj.metrosBase, puntos: puntosRuta(G, obj.paradas),
+  return { id: id || '', titulo: titulo, color: color || COLORES_RUTA[0], metros: obj.metros, metrosBase: obj.metrosBase, puntos: puntosRuta(G, obj.paradas),
     deposito: { x: G.deposito.x, y: G.corr[0].y },
-    paradas: obj.paradas.map(function (p) { var u = G.porId[p.u] || {}; return { x: Number(p.x), cy: G.corr[p.c].y, y: Number(u.y || 0), z: Number(u.z || 0), pos: p.pos }; }) };
+    paradas: obj.paradas.map(function (p) {
+      var u = G.porId[p.u] || {}, it = C.porSku[p.sku];
+      return { x: Number(p.x), cy: G.corr[p.c].y, y: Number(u.y || 0), z: Number(u.z || 0), pos: p.pos, sku: p.sku,
+        nombre: it ? it.p.nombre : p.sku, uds: p.items.reduce(function (s, z) { return s + z.c; }, 0) };
+    }) };
 }
 
 /* ---------- Vista: Pedidos ---------- */
@@ -423,9 +432,10 @@ PINTAR.picking = function () {
   $('pk-generar').innerHTML = h;
 
   // Lotes abiertos
-  $('pk-abiertos').innerHTML = '<h3>Lotes en curso</h3><div class="sub">Carros que se están preparando</div>' + (abiertos.map(function (l) {
+  $('pk-abiertos').innerHTML = '<div class="pk-prop-cab"><h3>Lotes en curso</h3>' + (abiertos.length && tiene('posiciones') ? '<button class="btn mini" data-accion="todos3d">Ver ' + (abiertos.length > 1 ? 'todos ' : '') + 'en 3D</button>' : '') + '</div>' +
+    '<div class="sub">Carros que se están preparando</div>' + (abiertos.map(function (l) {
     var sel = PK.sel && PK.sel.tipo === 'lote' && PK.sel.id === l.id;
-    return '<div class="pk-lote' + (sel ? ' sel' : '') + '"><div class="pk-prop-cab"><b>' + esc(l.id) + '</b><span class="tenue">' + esc(l.responsable || 'Sin preparador') + ' · ' + esc(l.creado.slice(11)) + '</span></div>' +
+    return '<div class="pk-lote' + (sel ? ' sel' : '') + '"><div class="pk-prop-cab"><b><i class="pk-color" style="background:' + colorLote(l.id) + '"></i>' + esc(l.id) + '</b><span class="tenue">' + esc(l.responsable || 'Sin preparador') + ' · ' + esc(l.creado.slice(11)) + '</span></div>' +
       chipsPedidos(l.pedidos) + resumenLote({ paradas: l.ruta, unidades: l.unidades, metros: Number(l.metros), metrosBase: Number(l.metrosBase), segundos: l.segundos }) +
       '<div class="pk-acc"><button class="btn mini" data-accion="verLote" data-id="' + esc(l.id) + '">Lista de picking</button><button class="btn mini" data-accion="lote3d" data-id="' + esc(l.id) + '">Ver en 3D</button>' +
       '<button class="btn mini primario escribe" data-accion="completarLote" data-id="' + esc(l.id) + '">Despachar</button><button class="btn mini escribe" data-accion="cancelarLote" data-id="' + esc(l.id) + '">Cancelar</button></div></div>';
@@ -506,23 +516,62 @@ function imprimirLote(id) {
 }
 
 /* ---------- Ruta en la bodega 3D ---------- */
-function pintarBannerRuta() {
-  var b = $('b-ruta'); if (!b) return;
-  var R = ESTADO.ruta;
-  if (!R) { b.style.display = 'none'; return; }
+// Selección de rutas en la bodega 3D: '' (ninguna) · 'todos' (todos los lotes abiertos) · id de un lote · 'prop:n' (lote propuesto)
+ESTADO.rutaSel = ''; ESTADO.rutas = [];
+function rutasSeleccionadas() {
+  var s = ESTADO.rutaSel, r = [];
+  if (!s) return r;
+  if (s.indexOf('prop:') === 0) {
+    var i = Number(s.slice(5)), o = PK.propuestas && PK.propuestas[i];
+    if (o) r.push(ruta3D(o, 'Lote propuesto ' + (i + 1), COLORES_RUTA[0], s));
+  } else lotesAbiertos().forEach(function (l) {
+    if (s === 'todos' || s === l.id) r.push(ruta3D({ paradas: l.ruta, metros: Number(l.metros), metrosBase: Number(l.metrosBase) }, 'Lote ' + l.id, colorLote(l.id), l.id));
+  });
+  return r.filter(Boolean);
+}
+function aplicarRutas(enfocar) {
+  ESTADO.rutas = rutasSeleccionadas();
+  if (!ESTADO.rutas.length) ESTADO.rutaSel = '';
+  ESTADO.rutasD = D;
+  BODEGA.ruta(enfocar);
+  pintarControlRutas();
+}
+function pintarControlRutas() {
+  var sel = $('b-rutas-sel'), b = $('b-ruta'), L = lotesAbiertos(), s = ESTADO.rutaSel;
+  if (sel) {
+    sel.innerHTML = !tiene('posiciones') ? '' : '<select class="sel' + (s ? ' activo' : '') + '" id="b-rutas" title="Rutas de picking" aria-label="Rutas de picking">' +
+      '<option value="">' + (L.length ? 'Rutas de picking: ninguna' : 'Sin lotes de picking abiertos') + '</option>' +
+      (L.length > 1 ? '<option value="todos"' + (s === 'todos' ? ' selected' : '') + '>Todos los lotes abiertos (' + L.length + ')</option>' : '') +
+      L.map(function (l) { return '<option value="' + esc(l.id) + '"' + (s === l.id ? ' selected' : '') + '>● ' + esc(l.id) + ' · ' + l.pedidos.length + ' pedidos · ' + l.ruta.length + ' paradas</option>'; }).join('') +
+      (s.indexOf('prop:') === 0 ? '<option value="' + esc(s) + '" selected>Lote propuesto ' + (Number(s.slice(5)) + 1) + ' (sin crear)</option>' : '') + '</select>';
+  }
+  if (!b) return;
+  var R = ESTADO.rutas || [];
+  if (!R.length) { b.style.display = 'none'; return; }
   b.style.display = '';
-  var ah = R.metrosBase > R.metros ? (R.metrosBase - R.metros) / R.metrosBase * 100 : 0;
-  b.innerHTML = '<b>' + esc(R.titulo) + '</b><span>' + R.paradas.length + ' paradas · ' + metros(R.metros) + (ah ? ' · <em>−' + pct(ah) + ' vs pedido a pedido</em>' : '') + '</span>' +
-    '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">Volver al picking</button><button class="btn mini" data-accion="quitarRuta">Quitar ruta</button>';
+  var botones = '<button class="btn mini" data-accion="repetirRuta">Repetir recorrido</button><button class="btn mini" data-accion="volverPicking">Volver al picking</button><button class="btn mini" data-accion="quitarRuta">Quitar ' + (R.length > 1 ? 'rutas' : 'ruta') + '</button>';
+  if (R.length === 1) {
+    var r = R[0], ah = r.metrosBase > r.metros ? (r.metrosBase - r.metros) / r.metrosBase * 100 : 0;
+    b.innerHTML = '<i class="pk-color" style="background:' + r.color + '"></i><b>' + esc(r.titulo) + '</b><span>' + r.paradas.length + ' paradas · ' + num(r.paradas.reduce(function (t, p) { return t + p.uds; }, 0)) + ' uds · ' + metros(r.metros) +
+      (ah ? ' · <em>−' + pct(ah) + ' vs pedido a pedido</em>' : '') + '</span>' + botones;
+  } else {
+    b.innerHTML = '<b>' + R.length + ' lotes en curso</b><span>' + R.reduce(function (t, r) { return t + r.paradas.length; }, 0) + ' paradas · ' + metros(R.reduce(function (t, r) { return t + r.metros; }, 0)) + '</span>' +
+      '<span class="pk-leyenda">' + R.map(function (r) { return '<span><i class="pk-color" style="background:' + r.color + '"></i>' + esc(r.id) + '</span>'; }).join('') + '</span>' + botones;
+  }
 }
 var pintarPosicionesBase = PINTAR.posiciones;
-PINTAR.posiciones = function () { pintarPosicionesBase(); pintarBannerRuta(); };
-function verRuta3D(R) {
-  if (!R) { avisar('No se pudo calcular la ruta.', true); return; }
+PINTAR.posiciones = function () {
+  pintarPosicionesBase();
+  // Si los datos cambiaron (lote despachado o nuevo), las rutas se recalculan sin mover la cámara
+  if (ESTADO.rutasD !== D && ESTADO.rutaSel) aplicarRutas(false); else pintarControlRutas();
+};
+function ir3D(sel) {
   if (!tiene('posiciones')) { avisar('La bodega 3D está incluida en el plan Profesional.', true); return; }
-  ESTADO.ruta = R; ESTADO.pasillo = ''; if (ESTADO.filtro) ESTADO.filtro.pasillo = '';
-  mostrar('posiciones'); BODEGA.ruta(); pintarBannerRuta();
+  ESTADO.rutaSel = sel; ESTADO.pasillo = ''; if (ESTADO.filtro) ESTADO.filtro.pasillo = '';
+  mostrar('posiciones'); aplicarRutas(true);
+  if (!ESTADO.rutas.length) avisar('No se pudo calcular la ruta.', true);
 }
+document.addEventListener('change', function (e) { if (e.target && e.target.id === 'b-rutas') { ESTADO.rutaSel = e.target.value; aplicarRutas(true); } });
 
 /* ---------- Acciones ---------- */
 ACCIONES.nuevoPedido = function () { PK.form = true; if (ESTADO.vista === 'pedidos') pintar(); else mostrar('pedidos'); };
@@ -581,14 +630,12 @@ ACCIONES.cancelarLote = function (id) {
   servidor('cancelarLote', { id: id }, function (r) { avisar(r.mensaje); if (PK.sel && PK.sel.id === id) PK.sel = null; cargar(function () { mostrar('picking'); }); });
 };
 ACCIONES.imprimirLote = function (id) { imprimirLote(id); };
-ACCIONES.lote3d = function (id) {
-  var l = lotePorId(id); if (!l) return;
-  verRuta3D(ruta3D({ paradas: l.ruta, metros: Number(l.metros), metrosBase: Number(l.metrosBase) }, 'Ruta del lote ' + l.id));
-};
-ACCIONES.prop3d = function (i) { var o = PK.propuestas && PK.propuestas[Number(i)]; if (o) verRuta3D(ruta3D(o, 'Ruta del lote propuesto ' + (Number(i) + 1))); };
-ACCIONES.quitarRuta = function () { ESTADO.ruta = null; BODEGA.ruta(); pintarBannerRuta(); };
+ACCIONES.lote3d = function (id) { if (lotePorId(id)) ir3D(id); };
+ACCIONES.todos3d = function () { ir3D(lotesAbiertos().length > 1 ? 'todos' : (lotesAbiertos()[0] || {}).id || ''); };
+ACCIONES.prop3d = function (i) { if (PK.propuestas && PK.propuestas[Number(i)]) ir3D('prop:' + Number(i)); };
+ACCIONES.quitarRuta = function () { ESTADO.rutaSel = ''; aplicarRutas(false); };
 ACCIONES.volverPicking = function () { mostrar('picking'); };
-ACCIONES.repetirRuta = function () { BODEGA.ruta(); };
+ACCIONES.repetirRuta = function () { BODEGA.ruta(false); };
 
 /** Confirmación propia (sin diálogos del navegador). Segundo clic en 4 s = confirmar. */
 var CONFIRMA = { clave: '', hasta: 0 };

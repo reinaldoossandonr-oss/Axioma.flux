@@ -327,9 +327,10 @@ function enlazarSaas() {
 
 /* ---------- Filtros de posiciones (3D y mapa): esconden lo que no cumple ---------- */
 ESTADO.filtro = { categoria: '', rotacion: '', disp: '', pasillo: '' };
-function filtroActivo() { var f = ESTADO.filtro; return !!(f.categoria || f.rotacion || f.disp || f.pasillo); }
+function filtroActivo() { var f = ESTADO.filtro; return !!(f.categoria || f.rotacion || f.disp || f.pasillo || ESTADO.resaltar); }
 function pasaFiltro(x) {
   var f = ESTADO.filtro;
+  if (ESTADO.resaltar && !ESTADO.resaltar[x.u.id]) return false;
   if (f.pasillo && x.u.pasillo !== f.pasillo) return false;
   if (f.disp === 'ocupada' && !x.it) return false;
   if (f.disp === 'libre' && x.it) return false;
@@ -356,9 +357,9 @@ function aplicarFiltro(cambioPasillo) {
 function resumenFiltro() {
   if (!filtroActivo()) return '';
   var n = D.ubicaciones.filter(function (u) { return pasaFiltro(C.ubi[u.id]); }).length;
-  return '<div class="aviso-demo" style="margin-bottom:12px">Filtro activo: se muestran <b>' + num(n) + '</b> de ' + num(D.ubicaciones.length) + ' posiciones.</div>';
+  return '<div class="aviso-demo" style="margin-bottom:12px">' + (ESTADO.resaltar ? '✦ Resultado del asistente' + (ESTADO.resaltarTxt ? ' para «' + esc(ESTADO.resaltarTxt) + '»' : '') + ' — se muestran <b>' : 'Filtro activo: se muestran <b>') + num(n) + '</b> de ' + num(D.ubicaciones.length) + ' posiciones.</div>';
 }
-ACCIONES.limpiarFiltros = function () { var p = !!ESTADO.filtro.pasillo; ESTADO.filtro = { categoria: '', rotacion: '', disp: '', pasillo: '' }; aplicarFiltro(p); };
+ACCIONES.limpiarFiltros = function () { var p = !!ESTADO.filtro.pasillo; ESTADO.filtro = { categoria: '', rotacion: '', disp: '', pasillo: '' }; ESTADO.resaltar = null; aplicarFiltro(p); };
 document.addEventListener('change', function (e) {
   var k = e.target && e.target.getAttribute && e.target.getAttribute('data-filtro'); if (!k) return;
   ESTADO.filtro[k] = e.target.value; aplicarFiltro(k === 'pasillo');

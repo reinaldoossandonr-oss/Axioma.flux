@@ -1,0 +1,20 @@
+
+# ---------------- Efectos premium y Asistente Flux (31/10/2026) ----------------
+_aqui = pathlib.Path(__file__).parent
+css_panel += _aqui.joinpath("efectos.css").read_text(encoding="utf-8") + _aqui.joinpath("asistente.css").read_text(encoding="utf-8")
+cuerpo = cambiar(cuerpo, '<button class="btn btn-tema" id="btn-tema"',
+    '<button class="btn btn-ia" data-accion="abrirAsistente" title="Asistente Flux (Ctrl + K)" aria-label="Abrir el asistente"><span class="ia-chispa">✦</span><span class="ia-largo">Pregúntale a Flux</span><kbd>Ctrl K</kbd></button><button class="btn btn-tema" id="btn-tema"')
+ASISTENTE_HTML = '''<div id="ia-fondo"></div>
+<aside id="ia-panel" role="dialog" aria-label="Asistente Flux">
+  <div class="ia-cab"><div class="ia-logo" style="width:34px;height:34px;border-radius:11px;font-size:16px;margin:0;animation:none">✦</div><h3>Asistente Flux</h3><span class="ia-modo" id="ia-modo">IA</span><button class="btn mini" data-accion="cerrarAsistente" aria-label="Cerrar el asistente">✕</button></div>
+  <div id="ia-mensajes"></div>
+  <div id="ia-sugerencias"></div>
+  <form id="ia-form" autocomplete="off"><input id="ia-texto" placeholder="Pregunta sobre tu bodega, stock o pedidos…" aria-label="Pregunta para el asistente" maxlength="400"><button class="btn primario" type="submit">Preguntar</button></form>
+</aside>
+'''
+cuerpo = cambiar(cuerpo, '<div id="aviso"></div>', ASISTENTE_HTML + '<div id="aviso"></div>')
+js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */",
+    "\n" + _aqui.joinpath("efectos.js").read_text(encoding="utf-8") + "\n" + _aqui.joinpath("asistente.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+js = cambiar(js, "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos();\n", "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos(); enlazarAsistente();\n")
+js = cambiar(js, "    $('cargando').style.display = 'none';\n", "    ocultarCargando();\n")
+

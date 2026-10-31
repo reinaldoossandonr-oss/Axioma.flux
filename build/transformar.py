@@ -133,7 +133,7 @@ VISTAS_NUEVAS = '''
         </div>
       </section>
 '''
-cuerpo = cambiar(cuerpo, '<div class="seg" id="b-pasillos"></div>', '<div class="filtro3d" id="b-filtros"></div>')
+cuerpo = cambiar(cuerpo, '<div class="seg" id="b-pasillos"></div>', '<div class="filtro3d" id="b-filtros"></div><div class="filtro3d" id="b-rutas-sel"></div>')
 cuerpo = cambiar(cuerpo, '<div class="leyenda" id="u-leyenda"></div>', '<div class="filtro3d" id="u-filtros"></div><div class="leyenda" id="u-leyenda"></div>')
 cuerpo = cambiar(cuerpo, '      <div id="formularios"></div>', VISTAS_NUEVAS + '      <div id="formularios"></div>')
 
@@ -395,6 +395,9 @@ body.solo-lectura .escribe{display:none!important}
 .pk-cajas span{display:inline-flex;align-items:center;gap:5px}
 #b-ruta{position:absolute;left:12px;bottom:46px;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--sobre2);border:1px solid var(--azul);border-radius:12px;padding:8px 10px;box-shadow:var(--sombra);font-size:12.5px;max-width:calc(100% - 24px)}
 #b-ruta span{color:var(--suave)}#b-ruta em{font-style:normal;color:var(--verde);font-weight:700}
+.pk-color{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+#b-ruta .pk-leyenda{display:inline-flex;gap:10px;flex-wrap:wrap}#b-ruta .pk-leyenda span{color:var(--texto);font-weight:600}
+#b-rutas.activo{border-color:var(--azul);color:var(--azul)}
 @media(max-width:1100px){.pk-det{grid-template-columns:1fr}.pk-total{grid-template-columns:1fr auto}.pk-barras{grid-column:1/-1}}
 @media(max-width:760px){.pe-cab{display:none}.pe-linea{grid-template-columns:minmax(0,1fr) 80px 34px}.pe-stock{grid-column:1/-1}.pk-barras div{grid-template-columns:96px minmax(0,1fr)}.pk-barras b{grid-column:2}#b-ruta{bottom:12px}}
 '''
@@ -417,62 +420,88 @@ js = cambiar(js, "  enlazar(); enlazarSaas(); enlazarIntegraciones();\n", "  enl
 # Bodega 3D: ruta de picking (cinta azul por los pasillos, paradas numeradas, despacho y un punto que la recorre)
 RUTA3D = r'''
   var rutaG = null, rutaAnim = null;
+  function caminoRedondo(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r);
+    g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
   function texEtiqueta(txt, fondo, ancho) {
     var c = document.createElement('canvas'), w = ancho || 128; c.width = w; c.height = 128; var g = c.getContext('2d');
     g.fillStyle = fondo; g.strokeStyle = '#ffffff'; g.lineWidth = 9;
-    g.beginPath();
-    if (ancho) { var r = 34, a = 6, b = 6, x1 = w - 6, y1 = 122; g.moveTo(a + r, b); g.lineTo(x1 - r, b); g.quadraticCurveTo(x1, b, x1, b + r); g.lineTo(x1, y1 - r); g.quadraticCurveTo(x1, y1, x1 - r, y1); g.lineTo(a + r, y1); g.quadraticCurveTo(a, y1, a, y1 - r); g.lineTo(a, b + r); g.quadraticCurveTo(a, b, a + r, b); }
-    else g.arc(64, 64, 55, 0, Math.PI * 2);
+    if (ancho) caminoRedondo(g, 6, 6, w - 12, 116, 34); else { g.beginPath(); g.arc(64, 64, 55, 0, Math.PI * 2); }
     g.fill(); g.stroke();
     g.fillStyle = '#ffffff'; g.font = '800 ' + (ancho ? 52 : String(txt).length > 2 ? 44 : 60) + 'px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, w / 2, 67);
     var t = new T.CanvasTexture(c); t.anisotropy = 4; return t;
   }
+  /** Etiqueta de parada: número en el color del lote + unidades, SKU y producto. */
+  function texParada(n, color, l1, l2) {
+    var c = document.createElement('canvas'); c.width = 600; c.height = 150; var g = c.getContext('2d');
+    g.fillStyle = 'rgba(255,255,255,0.97)'; g.strokeStyle = color; g.lineWidth = 8; caminoRedondo(g, 6, 6, 588, 138, 62); g.fill(); g.stroke();
+    g.fillStyle = color; g.beginPath(); g.arc(75, 75, 56, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 ' + (String(n).length > 2 ? 44 : 58) + 'px Inter, system-ui, sans-serif'; g.fillText(n, 75, 79);
+    g.textAlign = 'left'; g.fillStyle = '#0B1324'; g.font = '800 46px Inter, system-ui, sans-serif'; g.fillText(l1, 150, 56);
+    g.fillStyle = '#475569'; g.font = '600 35px Inter, system-ui, sans-serif'; g.fillText(l2, 150, 108);
+    var t = new T.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  function corto(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
   function dibujarRuta() {
     if (rutaG) { escena.remove(rutaG); rutaG.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); rutaG = null; }
     rutaAnim = null; sucio = true;
-    var R = ESTADO.ruta; if (!R || !R.puntos || R.puntos.length < 2) return;
+    var L = (ESTADO.rutas || []).filter(function (R) { return R && R.puntos && R.puntos.length > 1; }); if (!L.length) return;
     rutaG = new T.Group(); escena.add(rutaG);
-    var azul = new T.MeshBasicMaterial({ color: 0x0ea5f0, toneMapped: false }), naranja = new T.MeshBasicMaterial({ color: 0xf97316, toneMapped: false });
-    var P = R.puntos, tramos = [], total = 0;
-    for (var i = 0; i < P.length - 1; i++) {
-      var a = P[i], b = P[i + 1], L = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]); if (L < 0.01) continue;
-      var m = new T.Mesh(new T.BoxGeometry(Math.abs(b[0] - a[0]) + 0.3, 0.04, Math.abs(b[1] - a[1]) + 0.3), azul);
-      m.position.set((a[0] + b[0]) / 2, 0.05, (a[1] + b[1]) / 2); rutaG.add(m);
-      tramos.push({ a: a, b: b, L: L, ini: total }); total += L;
-    }
-    R.paradas.forEach(function (s, k) {
-      var disco = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.08, 24), naranja); disco.position.set(s.x, 0.08, s.cy); rutaG.add(disco);
-      var lado = Math.abs(s.y - s.cy); if (lado > 0.05) { var en = new T.Mesh(new T.BoxGeometry(0.09, 0.05, lado), naranja); en.position.set(s.x, 0.07, (s.y + s.cy) / 2); rutaG.add(en); }
-      var sp = new T.Sprite(new T.SpriteMaterial({ map: texEtiqueta(String(k + 1), '#F97316'), depthTest: false, toneMapped: false }));
-      sp.scale.set(0.95, 0.95, 1); sp.position.set(s.x, s.z + dim.h + 0.5, s.y); sp.renderOrder = 20; rutaG.add(sp);
+    var bolas = [], kE = Math.max(1, Math.min(1.9, radioBase / 35));   // en naves grandes las etiquetas crecen para leerse
+    L.forEach(function (R, ri) {
+      var col = new T.Color(R.color), mat = new T.MeshBasicMaterial({ color: col, toneMapped: false });
+      var off = (ri - (L.length - 1) / 2) * 0.24, P = R.puntos, tramos = [], total = 0;   // rutas paralelas un poco separadas
+      for (var i = 0; i < P.length - 1; i++) {
+        var a = P[i], b = P[i + 1], dx = Math.abs(b[0] - a[0]), dz = Math.abs(b[1] - a[1]), Lg = dx + dz; if (Lg < 0.01) continue;
+        var m = new T.Mesh(new T.BoxGeometry(dx + 0.26, 0.04, dz + 0.26), mat);
+        m.position.set((a[0] + b[0]) / 2 + (dz > dx ? off : 0), 0.05 + ri * 0.003, (a[1] + b[1]) / 2 + (dx >= dz ? off : 0)); rutaG.add(m);
+        tramos.push({ a: a, b: b, L: Lg, ini: total }); total += Lg;
+      }
+      R.paradas.forEach(function (s, k) {
+        var disco = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.08, 24), mat); disco.position.set(s.x, 0.08, s.cy); rutaG.add(disco);
+        var lado = Math.abs(s.y - s.cy); if (lado > 0.05) { var en = new T.Mesh(new T.BoxGeometry(0.08, 0.05, lado), mat); en.position.set(s.x, 0.07, (s.y + s.cy) / 2); rutaG.add(en); }
+        var sp = new T.Sprite(new T.SpriteMaterial({ map: texParada(String(k + 1), R.color, s.uds + ' uds · ' + s.sku, corto(s.nombre, 24)), depthTest: false, toneMapped: false }));
+        sp.scale.set(2.3 * kE, 0.575 * kE, 1); sp.position.set(s.x, s.z + dim.h + 0.35 + 0.3 * kE, s.y); sp.renderOrder = 20 + ri; rutaG.add(sp);
+      });
+      var bola = new T.Mesh(new T.SphereGeometry(0.3, 18, 12), new T.MeshBasicMaterial({ color: col.clone().lerp(new T.Color(1, 1, 1), 0.55), toneMapped: false }));
+      rutaG.add(bola); bolas.push({ bola: bola, tramos: tramos, total: total });
     });
-    var dep = new T.Mesh(new T.BoxGeometry(2.6, 0.1, 1.7), new T.MeshBasicMaterial({ color: 0x16a34a, toneMapped: false })); dep.position.set(R.deposito.x, 0.06, R.deposito.y); rutaG.add(dep);
+    var R0 = L[0];
+    var dep = new T.Mesh(new T.BoxGeometry(2.6, 0.1, 1.7), new T.MeshBasicMaterial({ color: 0x16a34a, toneMapped: false })); dep.position.set(R0.deposito.x, 0.06, R0.deposito.y); rutaG.add(dep);
     var spd = new T.Sprite(new T.SpriteMaterial({ map: texEtiqueta('DESPACHO', '#16A34A', 380), depthTest: false, toneMapped: false }));
-    spd.scale.set(3.0, 1.0, 1); spd.position.set(R.deposito.x, 1.7, R.deposito.y); spd.renderOrder = 20; rutaG.add(spd);
-    var bola = new T.Mesh(new T.SphereGeometry(0.3, 18, 12), new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); rutaG.add(bola);
-    // Un punto blanco recorre la ruta dos veces y se detiene en el despacho (máx. 30 fps; se apaga si el equipo va lento)
-    var vel = Math.max(3, total / 16), t0 = performance.now(), ultimo = 0, lentos = 0;
-    var ponerBola = function (d) {
-      var t = tramos[0]; for (var j = 0; j < tramos.length; j++) if (d >= tramos[j].ini) t = tramos[j];
-      var f = Math.min(1, (d - t.ini) / t.L); bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0.4, t.a[1] + (t.b[1] - t.a[1]) * f); sucio = true;
+    spd.scale.set(3.0, 1.0, 1); spd.position.set(R0.deposito.x, 1.7, R0.deposito.y); spd.renderOrder = 30; rutaG.add(spd);
+    // Un punto por ruta la recorre dos veces y se detiene en el despacho (máx. 30 fps; se apaga si el equipo va lento)
+    var t0 = performance.now(), ultimo = 0, lentos = 0;
+    var poner = function (q, d) {
+      var t = q.tramos[0]; for (var j = 0; j < q.tramos.length; j++) if (d >= q.tramos[j].ini) t = q.tramos[j];
+      var f = Math.min(1, (d - t.ini) / t.L); q.bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0.4, t.a[1] + (t.b[1] - t.a[1]) * f);
     };
-    ponerBola(0);
+    bolas.forEach(function (q) { if (q.tramos.length) poner(q, 0); });
     rutaAnim = function (ahora) {
-      if (!tramos.length || ESTADO.vista !== 'posiciones') return;
+      if (ESTADO.vista !== 'posiciones') return;
       if (ultimo && ahora - ultimo < 33) return;
       if (ultimo && ahora - ultimo > 150) lentos++;
       ultimo = ahora;
-      var d = (ahora - t0) / 1000 * vel;
-      if (d >= total * 2 || lentos > 4) { ponerBola(0); rutaAnim = null; return; }
-      ponerBola(d % total);
+      var seg = (ahora - t0) / 1000, vivas = 0;
+      bolas.forEach(function (q) {
+        if (!q.tramos.length) return;
+        var d = seg * Math.max(3, q.total / 16);
+        if (d >= q.total * 2 || lentos > 4) { poner(q, 0); return; }
+        poner(q, d % q.total); vivas++;
+      });
+      sucio = true;
+      if (!vivas) rutaAnim = null;
     };
   }
   function verRuta() {
-    if (!ESTADO.ruta) return;
-    // Encuadra la zona que recorre la ruta (en naves grandes no hace falta ver toda la bodega)
-    var R = ESTADO.ruta, bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity;
-    R.puntos.concat(R.paradas.map(function (s) { return [s.x, s.y]; })).concat([[R.deposito.x, R.deposito.y]]).forEach(function (q) {
-      bx0 = Math.min(bx0, q[0]); bx1 = Math.max(bx1, q[0]); bz0 = Math.min(bz0, q[1]); bz1 = Math.max(bz1, q[1]); });
+    var L = ESTADO.rutas || []; if (!L.length) return;
+    // Encuadra la zona que recorren las rutas (en naves grandes no hace falta ver toda la bodega)
+    var bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity;
+    L.forEach(function (R) {
+      R.puntos.concat(R.paradas.map(function (s) { return [s.x, s.y]; })).concat([[R.deposito.x, R.deposito.y]]).forEach(function (q) {
+        bx0 = Math.min(bx0, q[0]); bx1 = Math.max(bx1, q[0]); bz0 = Math.min(bz0, q[1]); bz1 = Math.max(bz1, q[1]); });
+    });
     var ext = Math.max(bx1 - bx0, (bz1 - bz0) * 1.25);
     var fin = { tx: (bx0 + bx1) / 2, ty: 0.5, tz: (bz0 + bz1) / 2, radio: Math.min(radioBase * 1.02, Math.max(14, ext * 1.05 + 8)) * Math.max(1, Math.min(1.9, 1.35 / (camara.aspect || 1.35))), theta: 0.2, phi: 0.7 };
     var ini = {}, t0 = performance.now(); for (var k in fin) ini[k] = orb[k];
@@ -480,8 +509,28 @@ RUTA3D = r'''
   }
 '''
 js = cambiar(js, "  var construida = false, pendiente = true;\n  return {", RUTA3D + "\n  var construida = false, pendiente = true;\n  return {")
-js = cambiar(js, "    tema: tema, actualizar: actualizar,", "    ruta: function () { if (listo) { dibujarRuta(); verRuta(); } },\n    tema: tema, actualizar: actualizar,")
+js = cambiar(js, "    tema: tema, actualizar: actualizar,", "    ruta: function (enfocar) { if (listo) { dibujarRuta(); if (enfocar !== false) verRuta(); } },\n    tema: tema, actualizar: actualizar,")
 js = cambiar(js, "    requestAnimationFrame(ciclo);\n    if (anim) anim(ahora);\n", "    requestAnimationFrame(ciclo);\n    if (anim) anim(ahora);\n    if (rutaAnim) rutaAnim(ahora);\n")
+
+
+# ---------------- Efectos premium y Asistente Flux (31/10/2026) ----------------
+_aqui = pathlib.Path(__file__).parent
+css_panel += _aqui.joinpath("efectos.css").read_text(encoding="utf-8") + _aqui.joinpath("asistente.css").read_text(encoding="utf-8")
+cuerpo = cambiar(cuerpo, '<button class="btn btn-tema" id="btn-tema"',
+    '<button class="btn btn-ia" data-accion="abrirAsistente" title="Asistente Flux (Ctrl + K)" aria-label="Abrir el asistente"><span class="ia-chispa">✦</span><span class="ia-largo">Pregúntale a Flux</span><kbd>Ctrl K</kbd></button><button class="btn btn-tema" id="btn-tema"')
+ASISTENTE_HTML = '''<div id="ia-fondo"></div>
+<aside id="ia-panel" role="dialog" aria-label="Asistente Flux">
+  <div class="ia-cab"><div class="ia-logo" style="width:34px;height:34px;border-radius:11px;font-size:16px;margin:0;animation:none">✦</div><h3>Asistente Flux</h3><span class="ia-modo" id="ia-modo">IA</span><button class="btn mini" data-accion="cerrarAsistente" aria-label="Cerrar el asistente">✕</button></div>
+  <div id="ia-mensajes"></div>
+  <div id="ia-sugerencias"></div>
+  <form id="ia-form" autocomplete="off"><input id="ia-texto" placeholder="Pregunta sobre tu bodega, stock o pedidos…" aria-label="Pregunta para el asistente" maxlength="400"><button class="btn primario" type="submit">Preguntar</button></form>
+</aside>
+'''
+cuerpo = cambiar(cuerpo, '<div id="aviso"></div>', ASISTENTE_HTML + '<div id="aviso"></div>')
+js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */",
+    "\n" + _aqui.joinpath("efectos.js").read_text(encoding="utf-8") + "\n" + _aqui.joinpath("asistente.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+js = cambiar(js, "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos();\n", "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos(); enlazarAsistente();\n")
+js = cambiar(js, "    $('cargando').style.display = 'none';\n", "    ocultarCargando();\n")
 
 
 # ---------------- Escritura ----------------
