@@ -23,8 +23,11 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Públicas: la portada (/) y el login
-  const esPublica = pathname === '/' || pathname.startsWith('/login')
+  // La dirección principal abre directamente el login (o el panel si ya hay sesión)
+  if (pathname === '/') return NextResponse.redirect(new URL(user ? '/app' : '/login', request.url))
+
+  // Pública: solo el login
+  const esPublica = pathname.startsWith('/login')
 
   if (!user && !esPublica) return NextResponse.redirect(new URL('/login', request.url))
   if (user && pathname.startsWith('/login')) return NextResponse.redirect(new URL('/app', request.url))
