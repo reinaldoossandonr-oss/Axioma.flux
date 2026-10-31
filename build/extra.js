@@ -1,7 +1,7 @@
 /* ===================== SAAS: MÓDULOS, ROLES Y AJUSTES (Axioma Flux) ===================== */
 var SECCIONES_BASE = JSON.parse(JSON.stringify(SECCIONES));
-var MODULOS = { inventario: 'Inventario', posiciones: 'Posiciones', comercial: 'Comercial', finanzas: 'Finanzas' };
-var PLANES = [['free', 'Básico', ['inventario']], ['pro', 'Profesional', ['inventario', 'posiciones', 'comercial']], ['enterprise', 'Empresa', ['inventario', 'posiciones', 'comercial', 'finanzas']]];
+var MODULOS = { inventario: 'Inventario y pedidos', posiciones: 'Bodega 3D y picking', comercial: 'CRM comercial', finanzas: 'Finanzas' };
+var PLANES = [['free', 'Básico', ['inventario']], ['pro', 'Profesional', ['inventario', 'posiciones']], ['enterprise', 'Empresa', ['inventario', 'posiciones', 'comercial', 'finanzas']]];
 var ROLES = { admin: 'Administrador', operador: 'Operador', viewer: 'Solo lectura' };
 var ZONAS = ['Europe/Madrid', 'America/Santiago', 'America/Bogota', 'America/Lima', 'America/Mexico_City', 'America/Argentina/Buenos_Aires', 'America/Caracas', 'America/Montevideo', 'America/Guayaquil', 'America/New_York', 'Europe/Berlin', 'Europe/Lisbon', 'UTC'];
 var LISTAS_EDITABLES = [['CATEGORIA', 'Categorías de producto'], ['LINEA', 'Líneas de negocio'], ['CANAL', 'Canales de venta'], ['METODO_PAGO', 'Métodos de pago'],
@@ -20,7 +20,7 @@ function aplicarModulos() {
   Object.keys(MODULOS).forEach(function (m) { b.classList.toggle('m-' + m, tiene(m)); });
   b.classList.toggle('solo-lectura', rol() === 'viewer');
   b.classList.toggle('es-admin', esAdmin());
-  SECCIONES.comercial.tabs = SECCIONES_BASE.comercial.tabs.filter(function (t) { return tiene('comercial') || (t[0] !== 'embudo' && t[0] !== 'equipo'); });
+  SECCIONES.pedidos.tabs = SECCIONES_BASE.pedidos.tabs.filter(function (t) { return t[0] !== 'picking' || tiene('posiciones'); });
   SECCIONES.cuenta.tabs = SECCIONES_BASE.cuenta.tabs.filter(function (t) {
     return t[0] === 'cuenta' || (esAdmin() && (t[0] === 'empresa' || t[0] === 'usuarios' || t[0] === 'integraciones')) || (t[0] === 'admin' && D.superadmin);
   });
@@ -45,6 +45,7 @@ function permitida(vista) {
   }
   var s = seccionDe(vista);
   if ((s === 'posiciones' || s === 'finanzas') && !tiene(s)) return false;
+  if (s === 'embudo' && !tiene('comercial')) return false;
   return SECCIONES[s].tabs.some(function (t) { return t[0] === vista; });
 }
 
@@ -114,6 +115,10 @@ PINTAR.empresa = function () {
     campoAj('bloques', 'Bloques de racks', 'number', b.bloques || 1) +
     campoAj('corte', 'Pasillo central entre bloques (m)', 'number', b.corte || 0, { paso: '0.1' }) +
     campoAj('nivelesBloque', 'Niveles por bloque (opcional, ej.: 3, 7)', 'text', (b.nivelesBloque || []).join(', ')) + '</div>' +
+    '<h3 style="margin-top:16px">Picking</h3><div class="sub">Para calcular rutas y tiempos de preparación</div><div class="campos">' +
+    campoAj('pkDespacho', 'Punto de despacho', 'select', cfgPicking().despacho, { ancho: 1, op: [['porton', 'Junto al portón (extremo derecho)'], ['opuesto', 'Extremo opuesto al portón']] }) +
+    campoAj('pkCarro', 'Pedidos por carro', 'number', cfgPicking().carro) + campoAj('pkVelocidad', 'Velocidad a pie (m/s)', 'number', cfgPicking().velocidad, { paso: '0.1' }) +
+    campoAj('pkParada', 'Segundos por parada', 'number', cfgPicking().segParada, { ayuda: 'Tiempo medio para recoger en cada posición.' }) + '</div>' +
     '<p class="nota-form">Ahora: ' + D.ubicaciones.length + ' posiciones. Si cambias el trazado, las posiciones que ya no existan se eliminan (los productos y su stock no cambian).</p>';
   $('em-listas').innerHTML = '<div class="campos">' + LISTAS_EDITABLES.map(function (l) {
     return campoAj('l-' + l[0], l[1] + ' (una por línea)', 'textarea', (D.listas[l[0]] || []).join('\n'));
@@ -219,6 +224,7 @@ var PROPIOS = {
     d.bodega = { estilo: valor('aj-estilo') || 'clasico', pasillos: unicos(valor('aj-pasillos').toUpperCase().split(/[\s,;]+/).filter(Boolean)), racks: n('racks'), niveles: n('niveles'),
       ancho: n('ancho'), alto: n('alto'), separacion: n('separacion'), dobles: valor('aj-dobles') === '1', bloques: n('bloques') || 1, corte: n('corte') || 0,
       nivelesBloque: valor('aj-nivelesBloque').split(/[\s,;]+/).filter(Boolean).map(Number).filter(function (x) { return x > 0; }) };
+    d.picking = { despacho: valor('aj-pkDespacho') || 'porton', carro: n('pkCarro') || 6, velocidad: n('pkVelocidad') || 1, segParada: n('pkParada') == null || isNaN(n('pkParada')) ? 20 : n('pkParada') };
     d.listas = {};
     LISTAS_EDITABLES.forEach(function (l) { d.listas[l[0]] = unicos(valor('aj-l-' + l[0]).split('\n').map(function (x) { return x.trim(); }).filter(Boolean)); });
     var fin = bloquear(form);
