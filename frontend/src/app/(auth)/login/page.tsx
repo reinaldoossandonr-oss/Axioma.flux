@@ -92,7 +92,7 @@ export default function LoginPage() {
         <img src={IMAGE_URL} alt="" className="lg-foto absolute inset-0 w-full h-full object-cover object-center" />
 
         <div className="absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse 75% 60% at 50% 55%, rgba(10,22,40,0.86) 0%, rgba(10,22,40,0.62) 55%, rgba(10,22,40,0.75) 100%)' }} />
+          style={{ background: 'linear-gradient(90deg, rgba(7,13,26,0.94) 0%, rgba(7,13,26,0.82) 42%, rgba(10,22,40,0.55) 75%, rgba(10,22,40,0.45) 100%)' }} />
 
         <svg className={`lg-plano modo-${CAPACIDADES[activa].id}`} viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           {RACKS.map((y) => (
@@ -120,8 +120,8 @@ export default function LoginPage() {
           style={{ background: 'linear-gradient(to bottom, transparent, #1AABF0 40%, #1AABF0 60%, transparent)' }} />
 
         {/* Logo */}
-        <div className="relative z-10 p-10 lg-entra lg-d1">
-          <div className="flex items-center justify-center gap-3">
+        <div className="relative z-10 px-14 py-10 lg-entra lg-d1">
+          <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
               style={{ background: 'linear-gradient(135deg, #1AABF0, #0891B2)' }}>
               <AxiomaIcon className="w-5 h-5" />
@@ -134,14 +134,15 @@ export default function LoginPage() {
         </div>
 
         {/* Mensaje + vitrina de capacidades */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-10 pb-16 lg-centro">
+        <div className="relative z-10 flex-1 flex flex-col items-start justify-center text-left px-14 pb-16 lg-izq">
           <div className="lg-entra lg-d2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-5"
             style={{ background: 'rgba(26,171,240,0.15)', border: '1px solid rgba(26,171,240,0.3)', color: '#38BDF8' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             Inventario y centros de distribución, con IA
           </div>
 
-          <h2 className="lg-entra lg-d3 text-white text-3xl font-bold leading-tight mb-6">
+          <span className="lg-entra lg-d3 lg-acento" aria-hidden="true" />
+          <h2 className="lg-entra lg-d3 lg-titular text-white font-bold mb-7">
             Cada producto en su lugar,<br />
             <span style={{ color: '#1AABF0' }}>cada pedido en su ruta</span>
           </h2>
