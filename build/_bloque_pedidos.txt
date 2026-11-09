@@ -1,0 +1,185 @@
+
+# ---------------- Pedidos y despachos · picking con rutas (30/10/2026) ----------------
+# Riel: Inventario, Posiciones, Pedidos y, solo con el módulo CRM, el embudo comercial
+cuerpo = cambiar(cuerpo, '    <button data-vista="comercial"><svg viewBox="0 0 24 24"><path d="M3 20h18M6 16v-5M11 16V7M16 16v-8M21 16V4"/></svg>Comercial</button>\n', '')
+_pos = re.search(r'    <button data-vista="posiciones" data-modulo="posiciones">.*?</button>\n', cuerpo).group(0)
+cuerpo = cambiar(cuerpo, _pos, _pos +
+    '    <button data-vista="pedidos"><svg viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 9h4.5l3.5 3.5V16h-8"/><circle cx="6" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/></svg>Pedidos<span class="insignia" id="ins-pedidos"></span></button>\n'
+    '    <button data-vista="embudo" data-modulo="comercial"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 6"/></svg>CRM</button>\n')
+cuerpo = cambiar(cuerpo,
+    '          <small>Comercial</small>\n'
+    '          <button data-vista="f-lead" data-modulo="comercial">Prospecto</button>\n'
+    '          <button data-vista="f-contacto" data-modulo="comercial">Contacto con un prospecto</button>\n'
+    '          <button data-vista="f-meta" data-modulo="comercial">Meta de un ejecutivo</button>\n'
+    '          <button data-vista="f-venta">Venta</button>\n'
+    '          <button data-vista="f-producto">Producto</button>\n'
+    '          <small>Inventario</small>\n'
+    '          <button data-vista="f-movimiento">Movimiento de inventario</button>\n',
+    '          <small>Pedidos y despachos</small>\n'
+    '          <button data-accion="nuevoPedido">Pedido de cliente</button>\n'
+    '          <button data-vista="f-venta">Venta directa</button>\n'
+    '          <small>Inventario</small>\n'
+    '          <button data-vista="f-producto">Producto</button>\n'
+    '          <button data-vista="f-movimiento">Movimiento de inventario</button>\n'
+    '          <small data-modulo="comercial">CRM comercial</small>\n'
+    '          <button data-vista="f-lead" data-modulo="comercial">Prospecto</button>\n'
+    '          <button data-vista="f-contacto" data-modulo="comercial">Contacto con un prospecto</button>\n'
+    '          <button data-vista="f-meta" data-modulo="comercial">Meta de un ejecutivo</button>\n')
+cuerpo = cambiar(cuerpo, '<option value="pro" selected>Profesional · + Posiciones y Comercial</option><option value="enterprise">Empresa · todos los módulos</option>',
+                 '<option value="pro" selected>Profesional · + Bodega 3D y picking</option><option value="enterprise">Empresa · + CRM y Finanzas</option>')
+cuerpo = cambiar(cuerpo, '<div id="b-etiqueta"></div>', '<div id="b-etiqueta"></div>\n            <div id="b-ruta" style="display:none"></div>')
+VISTAS_PEDIDOS = '''
+      <!-- PEDIDOS Y DESPACHOS -->
+      <section class="vista" id="v-pedidos">
+        <div class="rejilla kpis" id="pe-kpis" style="--c:4"></div>
+        <form class="t" id="pe-form" data-propio="pedido" novalidate style="display:none"></form>
+        <div class="filtros"><input type="search" id="pe-buscar" placeholder="Buscar pedido, cliente o producto…"><select class="sel" id="pe-estado"><option value="activos">Pendientes y en preparación</option><option value="">Todos los estados</option><option>Pendiente</option><option>En preparación</option><option>Despachado</option><option>Anulado</option></select>
+          <button class="btn primario escribe" type="button" data-accion="nuevoPedido">+ Pedido</button><button class="btn escribe" type="button" data-accion="demoPedidos" id="pe-demo" title="Crea 24 pedidos pendientes con productos ubicados (solo administradores)">Pedidos de ejemplo</button><span class="cuenta" id="pe-cuenta"></span></div>
+        <div class="t"><div class="tabla-caja" style="max-height:620px"><table id="pe-tabla"></table></div></div>
+      </section>
+      <section class="vista" id="v-picking">
+        <div class="rejilla kpis" id="pk-kpis" style="--c:4"></div>
+        <div class="rejilla" style="--c:3">
+          <div class="t" id="pk-generar" style="grid-column:span 2"></div>
+          <div class="t" id="pk-abiertos" style="align-self:start"></div>
+        </div>
+        <div class="t" id="pk-detalle" style="display:none"></div>
+        <div class="t"><h3>Historial de lotes</h3><div class="sub">Lotes despachados o cancelados en los últimos 60 días: recorrido real frente a preparar pedido a pedido</div><div class="tabla-caja" style="max-height:360px"><table id="pk-historial"></table></div></div>
+      </section>
+'''
+cuerpo = cambiar(cuerpo, '      <!-- AJUSTES (SaaS) -->', VISTAS_PEDIDOS + '      <!-- AJUSTES (SaaS) -->')
+
+css_panel += '''
+/* ---- Pedidos y despachos · picking ---- */
+body.solo-lectura .escribe{display:none!important}
+.enlace{background:none;border:0;padding:0;color:var(--azul);font:inherit;font-weight:600;cursor:pointer;text-align:left}
+.enlace:hover{text-decoration:underline}
+#pe-form{margin-bottom:14px}
+.pe-lineas{margin:14px 0 10px;display:flex;flex-direction:column;gap:7px}
+.pe-cab,.pe-linea{display:grid;grid-template-columns:minmax(0,1fr) 110px 250px 34px;gap:8px;align-items:center}
+.pe-cab span{font-size:11px;font-weight:600;color:var(--suave);text-transform:uppercase;letter-spacing:.04em}
+.pe-linea input{width:100%;background:var(--fondo);border:1px solid var(--linea);border-radius:9px;padding:8px 10px;color:var(--texto);font:inherit}
+.pe-linea input:focus,.pk-param input:focus{outline:2px solid var(--azul);outline-offset:1px}
+.pe-stock{font-size:12.5px}
+.pk-param{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:6px 0 12px}
+.pk-param label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--suave)}
+.pk-param input{background:var(--fondo);border:1px solid var(--linea);border-radius:9px;padding:8px 10px;color:var(--texto);font:inherit;width:170px}
+.pk-param input[type=number]{width:110px}
+.pk-total{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:16px;align-items:center;border:1px solid var(--linea);background:var(--tarjeta2);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px}
+.pk-barras{display:flex;flex-direction:column;gap:6px}
+.pk-barras div{display:grid;grid-template-columns:118px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;color:var(--suave)}
+.pk-barras i{display:block;height:10px;border-radius:6px;background:var(--pista2)}
+.pk-barras .opt i{background:var(--azul)}
+.pk-barras b{color:var(--texto);font-size:12.5px;white-space:nowrap}
+.pk-ahorro{font-size:24px;font-weight:800;color:var(--verde);line-height:1;text-align:center}
+.pk-ahorro small{display:block;font-size:11px;font-weight:600;color:var(--suave);margin-top:3px}
+.pk-props{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.pk-prop,.pk-lote{border:1px solid var(--linea);border-radius:12px;padding:11px 12px;background:var(--tarjeta);display:flex;flex-direction:column;gap:8px}
+.pk-lote{margin-top:10px}
+.pk-prop.sel,.pk-lote.sel{border-color:var(--azul);box-shadow:0 0 0 2px rgba(14,165,240,.2)}
+.pk-prop-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px}
+.pk-prop-cab .tenue{font-size:12px;text-align:right}
+.pk-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pk-ped{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border:1px solid var(--linea);border-radius:999px;padding:2px 8px 2px 3px;background:var(--tarjeta2)}
+.pk-ped i,.pk-rep i,.pk-cajas i{font-style:normal;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--azul);color:#fff;font-size:10.5px;font-weight:800;flex:none}
+.pk-ped.urg{border-color:var(--rojo)}.pk-ped.urg i{background:var(--rojo)}
+.pk-cifras{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--suave)}
+.pk-cifras b{color:var(--texto)}.pk-cifras .bien{font-weight:700}
+.pk-acc{display:flex;gap:6px;flex-wrap:wrap}
+#pk-detalle{margin-bottom:14px}
+.pk-det-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.pk-det-cab h3{display:flex;align-items:center;gap:8px}
+.pk-det{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;margin-top:12px}
+.pk-plano{border:1px solid var(--linea);border-radius:12px;background:var(--sobre);padding:10px;display:flex;flex-direction:column;gap:8px;align-self:start}
+.pk-mapa{width:100%;height:auto;max-height:470px;display:block}
+.pk-mapa .rk{fill:var(--pista2)}
+.pk-mapa .fl{fill:var(--suave);font-weight:700}
+.pk-mapa .ruta{fill:none;stroke:var(--azul);stroke-width:3.2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.pk-mapa .esp{stroke:#F97316;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.pk-mapa .par{fill:#F97316;stroke:#fff;stroke-width:1.2;vector-effect:non-scaling-stroke}
+.pk-mapa .par-t{fill:#fff;font-weight:800;pointer-events:none}
+.pk-mapa .dep{fill:var(--verde)}
+.pk-mapa .dep-t{fill:#fff;font-weight:800}
+.pk-lista-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13.5px}
+.pk-lista tr.hecho td{opacity:.45}.pk-lista tr.hecho td:first-child{opacity:1}
+.pk-lista input[type=checkbox]{width:17px;height:17px;accent-color:var(--azul)}
+.pk-num{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#F97316;color:#fff;font-weight:800;font-size:11.5px}
+.pk-rep{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12.5px;margin-right:6px;white-space:nowrap}
+.pk-cajas{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--suave)}
+.pk-cajas span{display:inline-flex;align-items:center;gap:5px}
+#b-ruta{position:absolute;left:12px;bottom:46px;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--sobre2);border:1px solid var(--azul);border-radius:12px;padding:8px 10px;box-shadow:var(--sombra);font-size:12.5px;max-width:calc(100% - 24px)}
+#b-ruta span{color:var(--suave)}#b-ruta em{font-style:normal;color:var(--verde);font-weight:700}
+@media(max-width:1100px){.pk-det{grid-template-columns:1fr}.pk-total{grid-template-columns:1fr auto}.pk-barras{grid-column:1/-1}}
+@media(max-width:760px){.pe-cab{display:none}.pe-linea{grid-template-columns:minmax(0,1fr) 80px 34px}.pe-stock{grid-column:1/-1}.pk-barras div{grid-template-columns:96px minmax(0,1fr)}.pk-barras b{grid-column:2}#b-ruta{bottom:12px}}
+'''
+
+# Secciones: Pedidos y despachos (con ventas y análisis), Catálogo dentro de Inventario, CRM aparte
+js = cambiar(js,
+    "  comercial: { titulo: 'Comercial', tabs: [['comercial', 'Dashboard'], ['embudo', 'Embudo de ventas'], ['equipo', 'Equipo comercial'], ['ventas', 'Ventas'], ['catalogo', 'Catálogo']] },\n"
+    "  inventario: { titulo: 'Inventario', tabs: [['inventario', 'Dashboard'], ['stock', 'Stock y quiebres'], ['reposicion', 'Reposición'], ['movimientos', 'Movimientos']] },\n"
+    "  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones']] },\n",
+    "  inventario: { titulo: 'Inventario', tabs: [['inventario', 'Dashboard'], ['catalogo', 'Catálogo'], ['stock', 'Stock y quiebres'], ['reposicion', 'Reposición'], ['movimientos', 'Movimientos']] },\n"
+    "  posiciones: { titulo: 'Posiciones', tabs: [['posiciones', 'Bodega 3D'], ['ubicaciones', 'Mapa de ubicaciones']] },\n"
+    "  pedidos: { titulo: 'Pedidos y despachos', tabs: [['pedidos', 'Pedidos'], ['picking', 'Picking y rutas'], ['ventas', 'Ventas'], ['comercial', 'Análisis de ventas']] },\n"
+    "  embudo: { titulo: 'CRM comercial', tabs: [['embudo', 'Embudo de ventas'], ['equipo', 'Equipo comercial']] },\n")
+js = cambiar(js, "var FORM_SECCION = { 'f-venta': 'comercial', 'f-producto': 'comercial', 'f-lead': 'comercial', 'f-contacto': 'comercial', 'f-meta': 'comercial',",
+                 "var FORM_SECCION = { 'f-venta': 'pedidos', 'f-producto': 'inventario', 'f-lead': 'embudo', 'f-contacto': 'embudo', 'f-meta': 'embudo',")
+PEDIDOS = pathlib.Path(__file__).with_name("pedidos.js")
+js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */", "\n" + PEDIDOS.read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+js = cambiar(js, "  enlazar(); enlazarSaas(); enlazarIntegraciones();\n", "  enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos();\n")
+
+# Bodega 3D: ruta de picking (cinta azul por los pasillos, paradas numeradas, despacho y un punto que la recorre)
+RUTA3D = r'''
+  var rutaG = null, rutaAnim = null;
+  function texEtiqueta(txt, fondo, ancho) {
+    var c = document.createElement('canvas'), w = ancho || 128; c.width = w; c.height = 128; var g = c.getContext('2d');
+    g.fillStyle = fondo; g.strokeStyle = '#ffffff'; g.lineWidth = 9;
+    g.beginPath();
+    if (ancho) { var r = 34, a = 6, b = 6, x1 = w - 6, y1 = 122; g.moveTo(a + r, b); g.lineTo(x1 - r, b); g.quadraticCurveTo(x1, b, x1, b + r); g.lineTo(x1, y1 - r); g.quadraticCurveTo(x1, y1, x1 - r, y1); g.lineTo(a + r, y1); g.quadraticCurveTo(a, y1, a, y1 - r); g.lineTo(a, b + r); g.quadraticCurveTo(a, b, a + r, b); }
+    else g.arc(64, 64, 55, 0, Math.PI * 2);
+    g.fill(); g.stroke();
+    g.fillStyle = '#ffffff'; g.font = '800 ' + (ancho ? 52 : String(txt).length > 2 ? 44 : 60) + 'px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, w / 2, 67);
+    var t = new T.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  function dibujarRuta() {
+    if (rutaG) { escena.remove(rutaG); rutaG.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } }); rutaG = null; }
+    rutaAnim = null; sucio = true;
+    var R = ESTADO.ruta; if (!R || !R.puntos || R.puntos.length < 2) return;
+    rutaG = new T.Group(); escena.add(rutaG);
+    var azul = new T.MeshBasicMaterial({ color: 0x0ea5f0, toneMapped: false }), naranja = new T.MeshBasicMaterial({ color: 0xf97316, toneMapped: false });
+    var P = R.puntos, tramos = [], total = 0;
+    for (var i = 0; i < P.length - 1; i++) {
+      var a = P[i], b = P[i + 1], L = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]); if (L < 0.01) continue;
+      var m = new T.Mesh(new T.BoxGeometry(Math.abs(b[0] - a[0]) + 0.3, 0.04, Math.abs(b[1] - a[1]) + 0.3), azul);
+      m.position.set((a[0] + b[0]) / 2, 0.05, (a[1] + b[1]) / 2); rutaG.add(m);
+      tramos.push({ a: a, b: b, L: L, ini: total }); total += L;
+    }
+    R.paradas.forEach(function (s, k) {
+      var disco = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.08, 24), naranja); disco.position.set(s.x, 0.08, s.cy); rutaG.add(disco);
+      var lado = Math.abs(s.y - s.cy); if (lado > 0.05) { var en = new T.Mesh(new T.BoxGeometry(0.09, 0.05, lado), naranja); en.position.set(s.x, 0.07, (s.y + s.cy) / 2); rutaG.add(en); }
+      var sp = new T.Sprite(new T.SpriteMaterial({ map: texEtiqueta(String(k + 1), '#F97316'), depthTest: false, toneMapped: false }));
+      sp.scale.set(0.95, 0.95, 1); sp.position.set(s.x, s.z + dim.h + 0.5, s.y); sp.renderOrder = 20; rutaG.add(sp);
+    });
+    var dep = new T.Mesh(new T.BoxGeometry(2.6, 0.1, 1.7), new T.MeshBasicMaterial({ color: 0x16a34a, toneMapped: false })); dep.position.set(R.deposito.x, 0.06, R.deposito.y); rutaG.add(dep);
+    var spd = new T.Sprite(new T.SpriteMaterial({ map: texEtiqueta('DESPACHO', '#16A34A', 380), depthTest: false, toneMapped: false }));
+    spd.scale.set(3.0, 1.0, 1); spd.position.set(R.deposito.x, 1.7, R.deposito.y); spd.renderOrder = 20; rutaG.add(spd);
+    var bola = new T.Mesh(new T.SphereGeometry(0.3, 18, 12), new T.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); rutaG.add(bola);
+    var vel = Math.max(3, total / 18), t0 = performance.now();
+    rutaAnim = function (ahora) {
+      if (!tramos.length || ESTADO.vista !== 'posiciones') return;
+      var d = ((ahora - t0) / 1000 * vel) % total, t = tramos[0];
+      for (var j = 0; j < tramos.length; j++) if (d >= tramos[j].ini) t = tramos[j];
+      var f = (d - t.ini) / t.L; bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0.4, t.a[1] + (t.b[1] - t.a[1]) * f); sucio = true;
+    };
+  }
+  function verRuta() {
+    if (!ESTADO.ruta) return;
+    var fin = { tx: centro.x, ty: 0.5, tz: centro.z, radio: radioBase * 1.02 * Math.max(1, Math.min(1.9, 1.35 / (camara.aspect || 1.35))), theta: 0.2, phi: 0.66 };
+    var ini = {}, t0 = performance.now(); for (var k in fin) ini[k] = orb[k];
+    anim = function (ahora) { var p = Math.min(1, (ahora - t0) / 700), e = 1 - Math.pow(1 - p, 3); for (var k2 in fin) orb[k2] = ini[k2] + (fin[k2] - ini[k2]) * e; if (p >= 1) anim = null; sucio = true; };
+  }
+'''
+js = cambiar(js, "  var construida = false, pendiente = true;\n  return {", RUTA3D + "\n  var construida = false, pendiente = true;\n  return {")
+js = cambiar(js, "    tema: tema, actualizar: actualizar,", "    ruta: function () { if (listo) { dibujarRuta(); verRuta(); } },\n    tema: tema, actualizar: actualizar,")
+js = cambiar(js, "    requestAnimationFrame(ciclo);\n    if (anim) anim(ahora);\n", "    requestAnimationFrame(ciclo);\n    if (anim) anim(ahora);\n    if (rutaAnim) rutaAnim(ahora);\n")
+
