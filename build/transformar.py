@@ -575,6 +575,110 @@ css_panel += """
 @media(max-width:760px){.op-sug{grid-template-columns:30px minmax(0,1fr)}.op-ahorro{grid-column:1/-1;align-items:flex-start;text-align:left}}
 """
 
+
+# ---------------- Mejoras 09/11/2026: huecos libres, carretilla, antes/después, órdenes de compra ----------------
+# Bodega 3D · cajas translúcidas en las posiciones libres
+js = cambiar(js, "  var grupo, cargas, bandas, etiquetas, huecos, marco, orden = [], sucio = true, anim = null;",
+    "  var grupo, cargas, bandas, etiquetas, huecos, marco, orden = [], sucio = true, anim = null;\n  var vacias = null, _texVacia = null;\n"
+    "  /** Caja de hueco libre: cara translúcida con esquinas marcadas y un «+» (se tiñe de cian con el material). */\n"
+    "  function texVacia() {\n"
+    "    if (_texVacia) return _texVacia;\n"
+    "    var c = document.createElement('canvas'); c.width = c.height = 128; var g = c.getContext('2d');\n"
+    "    g.fillStyle = 'rgba(255,255,255,0.20)'; g.fillRect(0, 0, 128, 128);\n"
+    "    g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 7; g.strokeRect(3.5, 3.5, 121, 121);\n"
+    "    g.lineWidth = 5; g.setLineDash([10, 9]); g.strokeStyle = 'rgba(255,255,255,0.55)'; g.strokeRect(16, 16, 96, 96); g.setLineDash([]);\n"
+    "    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 6; g.beginPath(); g.moveTo(64, 46); g.lineTo(64, 82); g.moveTo(46, 64); g.lineTo(82, 64); g.stroke();\n"
+    "    _texVacia = new T.CanvasTexture(c); _texVacia.anisotropy = 4; return _texVacia;\n"
+    "  }\n")
+js = cambiar(js, "huecos = inst(caj(W * 0.96, H * 0.9, Dp), M.hueco, n, false);",
+    "huecos = inst(caj(W * 0.96, H * 0.9, Dp), M.hueco, n, false);\n"
+    "    vacias = inst(caj(1, 1, 1), new T.MeshBasicMaterial({ map: texVacia(), color: 0x22d3ee, transparent: true, depthWrite: false, side: T.DoubleSide, toneMapped: false }), n, false); vacias.renderOrder = 2;")
+js = cambiar(js, "        cargas.setMatrixAt(i, cero); bandas.setMatrixAt(i, cero); cargas.setColorAt(i, col.setRGB(1, 1, 1));\n      }\n      if (pasa) {",
+    "        cargas.setMatrixAt(i, cero); bandas.setMatrixAt(i, cero); cargas.setColorAt(i, col.setRGB(1, 1, 1));\n      }\n"
+    "      if (!hay && pasa && verLibres) { var hv = dim.h * 0.62; poner(vacias, i, u.x, y + hv / 2 + 0.03, u.y, dim.w * 0.84, hv, Dp * 0.84); } else vacias.setMatrixAt(i, cero);\n"
+    "      if (pasa) {")
+js = cambiar(js, "    var maximo = 1; U.forEach(function (u) { maximo = Math.max(maximo, C.ubi[u.id].stock); });\n",
+    "    var maximo = 1; U.forEach(function (u) { maximo = Math.max(maximo, C.ubi[u.id].stock); });\n    var verLibres = verHuecosLibres();\n")
+js = cambiar(js, "    [t.tablas, t.tacos, cargas, bandas, etiquetas, huecos].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });",
+    "    [t.tablas, t.tacos, cargas, bandas, etiquetas, huecos, vacias].forEach(function (m) { m.instanceMatrix.needsUpdate = true; });")
+js = cambiar(js, "  else if (m === 'disponibilidad') l = [['Ocupado', 'Ocupado', COLOR.Ocupado], ['Libre', 'Libre', COLOR.Libre]];",
+    "  else if (m === 'disponibilidad') l = [['Ocupado', 'Ocupado', COLOR.Ocupado], ['Libre', 'Hueco libre', COLOR.Libre]];")
+js = cambiar(js, "  if (m !== 'disponibilidad') l.push(['_', 'Libre', COLOR.vacio]);", "  if (m !== 'disponibilidad') l.push(['_', 'Hueco libre', COLOR.Libre]);")
+
+# Rutas · carretilla elevadora en lugar de la esfera, y marcas de origen/destino del optimizador
+js = cambiar(js, "  function dibujarRuta() {\n",
+    "  /** Carretilla elevadora contrapesada con un palé en las horquillas; la carrocería lleva el color de la ruta. */\n"
+    "  function carretillaRuta(color, k) {\n"
+    "    var g = new T.Group(), cuerpo = new T.MeshStandardMaterial({ color: new T.Color(color), roughness: 0.45, metalness: 0.25 }),\n"
+    "      oscuro = new T.MeshStandardMaterial({ color: 0x1d2430, roughness: 0.55, metalness: 0.6 }), goma = new T.MeshStandardMaterial({ color: 0x0e0f12, roughness: 0.9 }),\n"
+    "      acero = new T.MeshStandardMaterial({ color: 0xaab4c0, roughness: 0.35, metalness: 0.85 }), madera = new T.MeshStandardMaterial({ color: 0xb98a55, roughness: 0.85 }),\n"
+    "      carton = new T.MeshStandardMaterial({ color: 0xcfa66a, roughness: 0.8 }), faro = new T.MeshBasicMaterial({ color: 0xffb020, toneMapped: false });\n"
+    "    var b = function (w, h, d, m, x, y, z) { var o = new T.Mesh(new T.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };\n"
+    "    b(0.92, 0.42, 1.25, cuerpo, 0, 0.42, -0.12);                                         // chasis\n"
+    "    b(0.92, 0.5, 0.34, oscuro, 0, 0.5, -0.86);                                           // contrapeso\n"
+    "    b(0.42, 0.1, 0.42, oscuro, 0, 0.7, -0.32); b(0.42, 0.38, 0.08, oscuro, 0, 0.92, -0.52);  // asiento\n"
+    "    [[-0.41, 0.22], [0.41, 0.22], [-0.41, -0.62], [0.41, -0.62]].forEach(function (p) { b(0.05, 1.0, 0.05, oscuro, p[0], 1.13, p[1]); });\n"
+    "    b(0.92, 0.05, 0.94, oscuro, 0, 1.65, -0.2);                                          // techo protector\n"
+    "    [-0.3, 0.3].forEach(function (x) { b(0.08, 1.9, 0.1, acero, x, 0.98, 0.5); });       // mástil\n"
+    "    b(0.68, 0.07, 0.08, acero, 0, 1.9, 0.5); b(0.7, 0.4, 0.05, oscuro, 0, 0.42, 0.58);\n"
+    "    [-0.2, 0.2].forEach(function (x) { b(0.1, 0.05, 0.9, acero, x, 0.12, 1.04); });      // horquillas\n"
+    "    b(0.9, 0.1, 0.8, madera, 0, 0.2, 1.04); b(0.78, 0.48, 0.68, carton, 0, 0.49, 1.04);   // palé con carga\n"
+    "    [[-0.46, 0.32, 0.2], [0.46, 0.32, 0.2], [-0.46, -0.72, 0.17], [0.46, -0.72, 0.17]].forEach(function (p) {\n"
+    "      var r = new T.Mesh(new T.CylinderGeometry(p[2], p[2], 0.16, 18), goma); r.rotation.z = Math.PI / 2; r.position.set(p[0], p[2], p[1]); g.add(r); });\n"
+    "    var luz = new T.Mesh(new T.SphereGeometry(0.07, 10, 8), faro); luz.position.set(0, 1.73, -0.2); g.add(luz);\n"
+    "    var s = 0.72 * Math.min(1.5, k || 1); g.scale.set(s, s, s);\n"
+    "    return g;\n"
+    "  }\n"
+    "  /** Marca de color en una posición: rojo = sale de aquí, verde = llega aquí, ámbar = va al fondo. */\n"
+    "  function marcaPosicion(s) {\n"
+    "    var c = new T.Color(s.marca === 'desde' ? 0xef4444 : s.marca === 'fondo' ? 0xf59e0b : 0x22c55e), w = dim.w * 0.98, h = dim.h * 0.95, d = dim.d + 0.12;\n"
+    "    var vol = new T.Mesh(new T.BoxGeometry(w, h, d), new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.24, depthWrite: false, toneMapped: false }));\n"
+    "    vol.position.set(s.x, s.z + h / 2 + 0.02, s.y); vol.renderOrder = 6; rutaG.add(vol);\n"
+    "    var borde = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(w, h, d)), new T.LineBasicMaterial({ color: c, toneMapped: false, depthTest: false, transparent: true }));\n"
+    "    borde.position.copy(vol.position); borde.renderOrder = 7; rutaG.add(borde);\n"
+    "    if (s.z > 0.2) { var pie = new T.Mesh(new T.BoxGeometry(0.06, s.z, 0.06), new T.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.65, toneMapped: false })); pie.position.set(s.x, s.z / 2, s.y + d / 2 + 0.05); rutaG.add(pie); }\n"
+    "  }\n"
+    "  function dibujarRuta() {\n")
+js = cambiar(js, "        var sp = new T.Sprite(new T.SpriteMaterial({ map: texParada(String(k + 1), R.color, s.uds + ' uds · ' + s.sku, corto(s.nombre, 24)), depthTest: false, toneMapped: false }));\n"
+                 "        sp.scale.set(2.3 * kE, 0.575 * kE, 1); sp.position.set(s.x, s.z + dim.h + 0.35 + 0.3 * kE, s.y);",
+    "        if (s.marca) marcaPosicion(s);\n"
+    "        var sp = new T.Sprite(new T.SpriteMaterial({ map: texParada(s.num || String(k + 1), s.color || R.color, s.l1 || (s.uds + ' uds · ' + s.sku), corto(s.l2 != null ? s.l2 : s.nombre, 24)), depthTest: false, toneMapped: false }));\n"
+    "        sp.scale.set(2.3 * kE, 0.575 * kE, 1); sp.position.set(s.x, s.z + dim.h + 0.35 + 0.3 * kE + (s.dy || 0) * kE, s.y);")
+js = cambiar(js, "      var bola = new T.Mesh(new T.SphereGeometry(0.3, 18, 12), new T.MeshBasicMaterial({ color: col.clone().lerp(new T.Color(1, 1, 1), 0.55), toneMapped: false }));\n"
+                 "      rutaG.add(bola); bolas.push({ bola: bola, tramos: tramos, total: total });",
+    "      var bola = carretillaRuta(R.color, kE);\n"
+    "      rutaG.add(bola); bolas.push({ bola: bola, tramos: tramos, total: total, ang: null });")
+js = cambiar(js, "      var f = Math.min(1, (d - t.ini) / t.L); q.bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0.4, t.a[1] + (t.b[1] - t.a[1]) * f);",
+    "      var f = Math.min(1, (d - t.ini) / t.L); q.bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0, t.a[1] + (t.b[1] - t.a[1]) * f);\n"
+    "      // La carretilla mira hacia donde avanza y gira con suavidad en las esquinas\n"
+    "      var meta = Math.atan2(t.b[0] - t.a[0], t.b[1] - t.a[1]);\n"
+    "      if (q.ang == null || d === 0) q.ang = meta; else q.ang += Math.atan2(Math.sin(meta - q.ang), Math.cos(meta - q.ang)) * 0.3;\n"
+    "      q.bola.rotation.y = q.ang;")
+
+# Marcado: botón y gráfico de pasillos sobre el 3D
+cuerpo = cambiar(cuerpo, '<div class="filtro3d" id="b-rutas-sel"></div>',
+    '<div class="filtro3d" id="b-rutas-sel"></div><button class="btn mini b-btn-graf" type="button" data-accion="grafPasillos" id="b-btn-graf" aria-expanded="false" aria-controls="b-graf">Libres por pasillo</button>')
+cuerpo = cambiar(cuerpo, '<div id="b-etiqueta"></div>', '<div id="b-etiqueta"></div>\n            <div id="b-graf" hidden role="region" aria-label="Posiciones libres y ocupadas por pasillo"></div>')
+
+# Stock y quiebres: barra de compra · pestaña Compras · ventana de la orden
+cuerpo = cambiar(cuerpo, '<span class="cuenta" id="s-cuenta"></span></div>',
+    '<button class="btn escribe" type="button" data-accion="ocReponer" title="Marca todos los productos por debajo del inventario óptimo">Seleccionar lo que hay que reponer</button>'
+    '<button class="btn escribe" type="button" data-accion="ocQuitarSel" id="s-oc-quitar" style="display:none">Quitar selección</button>'
+    '<button class="btn primario escribe" type="button" data-accion="ocSeleccion" id="s-oc" disabled>Generar orden de compra</button>'
+    '<span class="cuenta" id="s-cuenta"></span></div>')
+js = cambiar(js, "['reposicion', 'Reposición'], ['movimientos', 'Movimientos']] },", "['reposicion', 'Reposición'], ['compras', 'Compras'], ['movimientos', 'Movimientos']] },")
+cuerpo = cambiar(cuerpo, '      <!-- AJUSTES (SaaS) -->', """      <section class="vista" id="v-compras">
+        <div class="rejilla kpis" id="co-kpis" style="--c:4"></div>
+        <div class="rejilla" style="--c:3">
+          <div class="t" id="co-ordenes" style="grid-column:span 2;align-self:start"></div>
+          <div class="t" id="co-proveedores" style="align-self:start"></div>
+        </div>
+      </section>
+      <!-- AJUSTES (SaaS) -->""")
+cuerpo = cambiar(cuerpo, '<div id="aviso"></div>', '<div id="oc-fondo" hidden data-accion="ocCerrar"></div><div id="oc-modal" role="dialog" aria-modal="true" aria-labelledby="oc-titulo" hidden></div>\n<div id="aviso"></div>')
+css_panel += _aqui.joinpath("mejoras.css").read_text(encoding="utf-8")
+js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */", "\n" + _aqui.joinpath("mejoras.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+
 # ---------------- Escritura ----------------
 app = FRONT / "src/app/app"
 app.mkdir(parents=True, exist_ok=True)

@@ -68,6 +68,21 @@ function analizarBodega() {
 
 function nombreDe(p) { return p.x.it ? p.x.it.p.nombre : 'Libre'; }
 
+function ubicacionTxt(p) { return 'Pasillo ' + p.u.pasillo + ' · rack ' + p.u.rack + ' · nivel ' + p.u.nivel; }
+function cajaPosicion(p, rol, nota) {
+  var tit = { desde: 'Desde', hacia: 'Hacia', fondo: 'Hacia el fondo' }[rol];
+  return '<div class="op-pos ' + rol + '"><small>' + tit + '</small><b>' + esc(p.u.pos) + '</b><span>' + esc(ubicacionTxt(p)) + '</span><span>' + metros(p.d) + ' del despacho' + (nota ? ' · ' + nota : '') + '</span></div>';
+}
+/** Un movimiento de la sugerencia: qué producto, desde dónde y hacia dónde. */
+function movHtml(n, titulo, prod, rot, desde, hasta, rol, nota) {
+  var it = prod.x.it, dif = Math.round(desde.d) - Math.round(hasta.d);
+  return '<div class="op-mov">' + (n ? '<div class="op-mov-cab"><span class="op-paso-n">' + n + '</span>' + esc(titulo) + '</div>' : '') +
+    '<div class="op-prod"><b>' + esc(it ? it.p.nombre : 'Libre') + '</b> <span class="tenue">' + esc(it ? it.p.sku : '') + ' · ' + rot + ' · ' + num(prod.r || 0) + ' ventas en 90 días</span></div>' +
+    '<div class="op-ruta">' + cajaPosicion(desde, 'desde') +
+    '<div class="op-flecha" aria-hidden="true"><svg viewBox="0 0 40 14"><path d="M2 7h34M30 2l6 5-6 5"/></svg>' + (dif > 0 ? '<span>' + metros(dif) + ' más cerca</span>' : '') + '</div>' +
+    cajaPosicion(hasta, rol, nota) + '</div></div>';
+}
+
 PINTAR.optimizar = function () {
   var cfg = cfgPicking();
   if (!OPT.res || OPT.res.D !== D) { OPT.res = analizarBodega(); OPT.sel = null; }
@@ -84,13 +99,17 @@ PINTAR.optimizar = function () {
   var L = lotesAbiertos();
   if (L.length && R.sug.length) h += '<div class="aviso-demo" style="margin-top:10px">Hay ' + L.length + (L.length === 1 ? ' lote' : ' lotes') + ' de picking en curso: te recomendamos aplicar las reubicaciones cuando se despachen, para no cambiar sus rutas.</div>';
   h += R.sug.length ? '<div class="op-lista">' + R.sug.map(function (s, i) {
-    var sel = OPT.sel === i, rap = s.p;
-    var cuerpo = s.tipo === 'mover'
-      ? '<div class="op-paso"><span class="op-tag verde">Mover</span><b>' + esc(nombreDe(rap)) + '</b> <span class="tenue">' + esc(rap.x.it.p.sku) + '</span><div class="op-desde">' + esc(rap.u.pos) + ' <i>→</i> ' + esc(s.a.u.pos) + ' <span class="tenue">· ' + metros(rap.d) + ' → ' + metros(s.a.d) + ' del despacho</span></div></div>'
-      : '<div class="op-paso"><span class="op-tag ambar">1 · Liberar</span><b>' + esc(nombreDe(s.a)) + '</b> <span class="tenue">baja rotación</span><div class="op-desde">' + esc(s.a.u.pos) + ' <i>→</i> ' + esc(s.lej.u.pos) + ' <span class="tenue">· al fondo</span></div></div>' +
-        '<div class="op-paso"><span class="op-tag verde">2 · Acercar</span><b>' + esc(nombreDe(rap)) + '</b> <span class="tenue">alta rotación</span><div class="op-desde">' + esc(rap.u.pos) + ' <i>→</i> ' + esc(s.a.u.pos) + ' <span class="tenue">· ' + metros(rap.d) + ' → ' + metros(s.a.d) + ' del despacho</span></div></div>';
-    return '<div class="op-sug' + (sel ? ' sel' : '') + '"><div class="op-num">' + (i + 1) + '</div><div class="op-cuerpo">' + cuerpo + '</div>' +
-      '<div class="op-ahorro"><b>−' + metros(s.ahorro) + '</b><small>al mes</small><div class="pk-acc"><button class="btn mini" data-accion="optVer3D" data-id="' + i + '">Ver en 3D</button><button class="btn mini primario escribe" data-accion="optAplicar" data-id="' + i + '">Aplicar</button></div></div></div>';
+    var sel = OPT.sel === i, rap = s.p, cuerpo;
+    if (s.tipo === 'mover') {
+      cuerpo = movHtml('', '', rap, 'alta rotación', rap, s.a, 'hacia', 'hueco libre');
+    } else {
+      cuerpo = movHtml(1, 'Liberar el hueco: el producto lento va al fondo', s.a, s.a.cara ? 'baja rotación' : 'stock de reserva', s.a, s.lej, 'fondo', 'hueco libre al fondo') +
+        movHtml(2, 'Acercar el producto rápido a ese hueco', rap, 'alta rotación', rap, s.a, 'hacia', 'queda libre en el paso 1');
+    }
+    return '<div class="op-sug' + (sel ? ' sel' : '') + '"><div class="op-cab"><span class="op-num">' + (i + 1) + '</span>' +
+      (s.tipo === 'mover' ? '<span class="op-tag verde">Mover a un hueco libre</span>' : '<span class="op-tag ambar">Intercambio en 2 pasos</span>') +
+      '<span class="op-gana"><b>−' + metros(s.ahorro) + '</b><small>de recorrido al mes</small></span></div>' + cuerpo +
+      '<div class="op-acc"><button class="btn mini" data-accion="optVer3D" data-id="' + i + '">Ver antes y después en 3D</button><button class="btn mini primario escribe" data-accion="optAplicar" data-id="' + i + '">Aplicar</button></div></div>';
   }).join('') + '</div>' : '<div class="vacio">La bodega ya está bien ordenada: no hay reubicaciones con ahorro relevante.</div>';
   $('op-sugerencias').innerHTML = h;
   $('op-zonas').innerHTML = '<h3>Zonas de la bodega</h3><div class="sub">Por distancia a pie al despacho (incluye la altura de cada nivel)</div>' +
@@ -103,21 +122,32 @@ PINTAR.optimizar = function () {
     '<p class="nota-form" style="margin-top:12px">Lo ideal: la zona A llena de verde y la C con el rojo. El ahorro es una estimación con las ventas de los últimos 90 días; con lotes de picking el recorrido real ya es menor.</p>';
 };
 
-/** Movimiento de una sugerencia dibujado en la bodega 3D (origen → destino por los pasillos). */
-function rutaMovimiento(G, desde, hasta, color, titulo) {
+/** Movimiento de una sugerencia dibujado en la bodega 3D (origen → destino por los pasillos).
+    m = { paso, marcaDesde, marcaHasta, sube }: marcas de color en las posiciones y número del paso. */
+function rutaMovimiento(G, desde, hasta, color, titulo, m) {
+  m = m || {};
   var nodo = function (p) { var c = (G.acceso[Number(p.u.y)] || [0]).slice().sort(function (a, b) { return Math.abs(G.corr[a].y - Number(p.u.y)) - Math.abs(G.corr[b].y - Number(p.u.y)); })[0]; return { c: c, x: Number(p.u.x) }; };
   var a = nodo(desde), b = nodo(hasta), it = desde.x.it, uds = Math.max(1, desde.x.stock);
-  var parada = function (p, n, txt) { return { x: n.x, cy: G.corr[n.c].y, y: Number(p.u.y), z: Number(p.u.z), pos: p.u.pos, sku: p.u.pos, nombre: txt, uds: uds }; };
+  var parada = function (p, n, o) {
+    var r = { x: n.x, cy: G.corr[n.c].y, y: Number(p.u.y), z: Number(p.u.z), pos: p.u.pos, sku: p.u.pos, nombre: o.l2, uds: uds, l1: o.l1, l2: o.l2, num: o.num, color: o.color, marca: o.marca, dy: o.dy || 0 };
+    return r;
+  };
   var pts = [[a.x, G.corr[a.c].y]].concat(tramoRuta(G, a, b)), largo = 0;
   for (var i = 1; i < pts.length; i++) largo += Math.abs(pts[i][0] - pts[i - 1][0]) + Math.abs(pts[i][1] - pts[i - 1][1]);
+  var col = { desde: '#EF4444', hacia: '#22C55E', fondo: '#F59E0B' };
   return { id: 'opt', titulo: titulo, color: color, metros: largo, metrosBase: 0, puntos: pts, deposito: { x: G.deposito.x, y: G.corr[0].y },
-    paradas: [parada(desde, a, 'Sale: ' + (it ? it.p.nombre : '')), parada(hasta, b, 'Nuevo hueco')] };
+    paradas: [
+      parada(desde, a, { l1: (m.paso ? m.paso + ' · ' : '') + 'Sale de ' + desde.u.pos, l2: it ? it.p.nombre : '', num: m.paso || '↑', color: col[m.marcaDesde] || color, marca: m.marcaDesde }),
+      parada(hasta, b, { l1: (m.paso ? m.paso + ' · ' : '') + 'Llega a ' + hasta.u.pos, l2: m.marcaHasta === 'fondo' ? 'Hueco al fondo' : 'Nuevo sitio', num: m.paso || '↓', color: col[m.marcaHasta] || color, marca: m.marcaHasta, dy: m.sube || 0 })] };
 }
 ACCIONES.optVer3D = function (i) {
   var s = OPT.res && OPT.res.sug[Number(i)], G = geometriaBodega(); if (!s || !G) return;
-  OPT.sel = Number(i);
-  OPT.rutas = s.tipo === 'mover' ? [rutaMovimiento(G, s.p, s.a, '#10B981', 'Sugerencia ' + (Number(i) + 1) + ' · mover')]
-    : [rutaMovimiento(G, s.a, s.lej, '#F59E0B', 'Sugerencia ' + (Number(i) + 1) + ' · 1 liberar'), rutaMovimiento(G, s.p, s.a, '#10B981', '2 · acercar')];
+  if (typeof optFinSimulacion === 'function') optFinSimulacion();
+  OPT.sel = Number(i); OPT.fase = 'antes';
+  OPT.rutas = s.tipo === 'mover'
+    ? [rutaMovimiento(G, s.p, s.a, '#22C55E', 'Sugerencia ' + (Number(i) + 1) + ' · mover', { marcaDesde: 'desde', marcaHasta: 'hacia' })]
+    : [rutaMovimiento(G, s.a, s.lej, '#F59E0B', 'Sugerencia ' + (Number(i) + 1) + ' · 1 liberar', { paso: '1', marcaDesde: null, marcaHasta: 'fondo' }),
+       rutaMovimiento(G, s.p, s.a, '#22C55E', '2 · acercar', { paso: '2', marcaDesde: 'desde', marcaHasta: 'hacia', sube: 0.8 })];
   ir3D('opt');
 };
 
