@@ -2004,90 +2004,153 @@ var BODEGA = (function () {
     if (Math.abs(t.a[1] - t.b[1]) < e) return Math.abs(z - t.a[1]) < e && x >= Math.min(t.a[0], t.b[0]) - e && x <= Math.max(t.a[0], t.b[0]) + e;
     return Math.abs(x - t.a[0]) < e && z >= Math.min(t.a[1], t.b[1]) - e && z <= Math.max(t.a[1], t.b[1]) + e;
   }
-  var texDeRuta = [];
+  /* ---------- ruta con estela de luz (cinta curva con bordes brillantes, ramales y anillos en cada parada) ---------- */
+  var texDeRuta = [], cintasAnim = [];
+  /** Recorrido suave: esquinas redondeadas y puntos cada 0,4 m, con la distancia acumulada. */
+  function caminoSuave(P, radio) {
+    var out = [], add = function (x, z) { var l = out[out.length - 1]; if (!l || Math.abs(l[0] - x) + Math.abs(l[1] - z) > 1e-4) out.push([x, z]); };
+    var recta = function (a, b) { var L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 0.4)); for (var k = 1; k <= n; k++) add(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n); };
+    var Q = []; P.forEach(function (p) { var l = Q[Q.length - 1]; if (!l || Math.abs(l[0] - p[0]) + Math.abs(l[1] - p[1]) > 0.01) Q.push([p[0], p[1]]); });
+    if (Q.length < 2) return { p: Q, s: [0], L: 0 };
+    add(Q[0][0], Q[0][1]); var desde = Q[0];
+    for (var i = 1; i < Q.length - 1; i++) {
+      var A = Q[i - 1], B = Q[i], C = Q[i + 1], l1 = Math.hypot(B[0] - A[0], B[1] - A[1]), l2 = Math.hypot(C[0] - B[0], C[1] - B[1]);
+      var r = Math.min(radio, l1 / 2, l2 / 2), u1 = [(B[0] - A[0]) / l1, (B[1] - A[1]) / l1], u2 = [(C[0] - B[0]) / l2, (C[1] - B[1]) / l2];
+      var e = [B[0] - u1[0] * r, B[1] - u1[1] * r], f = [B[0] + u2[0] * r, B[1] + u2[1] * r];
+      recta(desde, e);
+      for (var k = 1; k <= 10; k++) { var t = k / 10, m = 1 - t; add(m * m * e[0] + 2 * m * t * B[0] + t * t * f[0], m * m * e[1] + 2 * m * t * B[1] + t * t * f[1]); }
+      desde = f;
+    }
+    recta(desde, Q[Q.length - 1]);
+    var S = [0]; for (var q = 1; q < out.length; q++) S.push(S[q - 1] + Math.hypot(out[q][0] - out[q - 1][0], out[q][1] - out[q - 1][1]));
+    return { p: out, s: S, L: S[S.length - 1] };
+  }
+  function puntoEn(C, d) {
+    var lo = 0, hi = C.s.length - 1; d = Math.max(0, Math.min(C.L, d));
+    while (hi - lo > 1) { var m = (lo + hi) >> 1; if (C.s[m] <= d) lo = m; else hi = m; }
+    var a = C.p[lo], b = C.p[hi] || a, seg = (C.s[hi] - C.s[lo]) || 1, f = (d - C.s[lo]) / seg;
+    return { x: a[0] + (b[0] - a[0]) * f, z: a[1] + (b[1] - a[1]) * f, ang: Math.atan2(b[0] - a[0], b[1] - a[1]) };
+  }
+  /** Malla de cinta sobre el suelo a lo largo de un camino (u = metros / periodo, v = de borde a borde). */
+  function cintaGeo(C, ancho, desp, periodo) {
+    var n = C.p.length, pos = new Float32Array(n * 6), uv = new Float32Array(n * 4), idx = [];
+    for (var i = 0; i < n; i++) {
+      var a = C.p[Math.max(0, i - 1)], b = C.p[Math.min(n - 1, i + 1)], tx = b[0] - a[0], tz = b[1] - a[1], tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl;
+      var cx = C.p[i][0] + nx * desp, cz = C.p[i][1] + nz * desp;
+      pos.set([cx + nx * ancho / 2, 0, cz + nz * ancho / 2, cx - nx * ancho / 2, 0, cz - nz * ancho / 2], i * 6);
+      uv.set([C.s[i] / periodo, 1, C.s[i] / periodo, 0], i * 4);
+      if (i < n - 1) { var k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    var g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('uv', new T.BufferAttribute(uv, 2)); g.setIndex(idx); g.computeBoundingSphere();
+    return g;
+  }
+  /** Textura de la estela: bordes blancos brillantes, interior translúcido del color del lote y trazos que avanzan. */
+  function texEstela(color) {
+    var c = document.createElement('canvas'); c.width = 256; c.height = 128; var g = c.getContext('2d'), col = new T.Color(color), rgb = Math.round(col.r * 255) + ',' + Math.round(col.g * 255) + ',' + Math.round(col.b * 255);
+    var gv = g.createLinearGradient(0, 0, 0, 128);
+    gv.addColorStop(0, 'rgba(255,255,255,1)'); gv.addColorStop(0.09, 'rgba(255,255,255,.95)'); gv.addColorStop(0.16, 'rgba(' + rgb + ',.55)'); gv.addColorStop(0.5, 'rgba(' + rgb + ',.32)');
+    gv.addColorStop(0.84, 'rgba(' + rgb + ',.55)'); gv.addColorStop(0.91, 'rgba(255,255,255,.95)'); gv.addColorStop(1, 'rgba(255,255,255,1)');
+    g.fillStyle = gv; g.fillRect(0, 0, 256, 128);
+    g.fillStyle = 'rgba(255,255,255,.85)';                                  // trazos centrales (dan la sensación de flujo)
+    g.beginPath(); g.moveTo(40, 44); g.lineTo(110, 44); g.lineTo(150, 64); g.lineTo(110, 84); g.lineTo(40, 84); g.lineTo(80, 64); g.closePath(); g.fill();
+    var t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; t.wrapS = T.RepeatWrapping; t.anisotropy = 8; texDeRuta.push(t); return t;
+  }
+  function cinta(padre, C, ancho, desp, y, color, orden) {
+    var mHalo = new T.MeshBasicMaterial({ map: texHalo(), color: new T.Color(color), transparent: true, opacity: 0.6, depthWrite: false, toneMapped: false, side: T.DoubleSide });
+    var halo = new T.Mesh(cintaGeo(C, ancho * 3.2, desp, 1), mHalo); halo.position.y = y; halo.renderOrder = orden; padre.add(halo);
+    var tx = texEstela(color); cintasAnim.push(tx);
+    var cuerpo = new T.Mesh(cintaGeo(C, ancho, desp, 1.1), new T.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, toneMapped: false, side: T.DoubleSide }));
+    cuerpo.position.y = y + 0.004; cuerpo.renderOrder = orden + 1; padre.add(cuerpo);
+  }
+  /** Caja de cristal con aristas luminosas en la posición que debe buscar el preparador. */
+  function cajaObjetivo(padre, s, color) {
+    var g = new T.Group(); g.position.set(s.x, s.z + dim.h * 0.45, s.y); padre.add(g);
+    var geo = caj(dim.w * 1.0, dim.h * 0.94, dim.d + 0.16);
+    var vidrio = new T.Mesh(geo, new T.MeshBasicMaterial({ color: new T.Color(color).lerp(new T.Color('#ffffff'), 0.45), transparent: true, opacity: 0.2, depthWrite: false, toneMapped: false }));
+    vidrio.renderOrder = 8; g.add(vidrio);
+    var aristas = new T.LineSegments(new T.EdgesGeometry(geo), new T.LineBasicMaterial({ color: 0xffffff, toneMapped: false, transparent: true, opacity: 1 }));
+    aristas.renderOrder = 9; g.add(aristas);
+    var brillo = new T.LineSegments(new T.EdgesGeometry(caj(dim.w * 1.06, dim.h * 1.0, dim.d + 0.24)), new T.LineBasicMaterial({ color: new T.Color(color), toneMapped: false, transparent: true, opacity: 0.7 }));
+    brillo.renderOrder = 9; g.add(brillo);
+    return { g: g, vidrio: vidrio, aristas: aristas, brillo: brillo };
+  }
   function dibujarRuta() {
     if (rutaG) { escena.remove(rutaG); rutaG.traverse(function (o) { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); rutaG = null; }
-    texDeRuta.forEach(function (t) { t.dispose(); }); texDeRuta = [];
+    texDeRuta.forEach(function (t) { t.dispose(); }); texDeRuta = []; cintasAnim = [];
     rutaAnim = null; sucio = true;
     var L = (ESTADO.rutas || []).filter(function (R) { return R && R.puntos && R.puntos.length > 1; }); if (!L.length) return;
     rutaG = new T.Group(); escena.add(rutaG);
-    var bolas = [], kE = Math.max(1, Math.min(1.9, radioBase / 35)), chev = texChevron();
-    var techoRacks = 0; (D.ubicaciones || []).forEach(function (u) { techoRacks = Math.max(techoRacks, Number(u.z) + dim.h); });
+    var bolas = [], kE = Math.max(1, Math.min(1.9, radioBase / 35));
     L.forEach(function (R, ri) {
-      var col = new T.Color(R.color), y0 = 0.045 + ri * 0.004;
-      var mHalo = new T.MeshBasicMaterial({ map: texHalo(), color: col, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false });
-      var mCore = new T.MeshBasicMaterial({ color: col, toneMapped: false });
-      var mChev = new T.MeshBasicMaterial({ map: chev, transparent: true, depthWrite: false, toneMapped: false });
-      var off = (ri - (L.length - 1) / 2) * 0.55, P = R.puntos, tramos = [], total = 0;
-      for (var i = 0; i < P.length - 1; i++) {
-        var a = P[i], b = P[i + 1], dxs = b[0] - a[0], dzs = b[1] - a[1], Lg = Math.abs(dxs) + Math.abs(dzs); if (Lg < 0.01) continue;
-        var horiz = Math.abs(dxs) >= Math.abs(dzs), cx = (a[0] + b[0]) / 2 + (horiz ? 0 : off), cz = (a[1] + b[1]) / 2 + (horiz ? off : 0), ang = Math.atan2(-dzs, dxs);
-        plano(rutaG, Lg + 1.6, 1.8, mHalo, cx, y0, cz, ang);
-        plano(rutaG, Lg + 0.52, 0.52, mCore, cx, y0 + 0.004, cz, ang);
-        plano(rutaG, Lg, 0.44, mChev, cx, y0 + 0.008, cz, ang, Lg / 0.95);
-        tramos.push({ a: a, b: b, L: Lg, ini: total }); total += Lg;
-      }
-      var paradas = [], jIni = 0, mHaz = new T.MeshBasicMaterial({ map: texHaz(), color: col, transparent: true, opacity: 0.85, depthWrite: false, side: T.DoubleSide, toneMapped: false });
+      var y0 = 0.05 + ri * 0.006, desp = (ri - (L.length - 1) / 2) * 0.6, C = caminoSuave(R.puntos, 1.6);
+      cinta(rutaG, C, 0.62, desp, y0, R.color, 3);
+      var paradas = [], dMin = 0;
       R.paradas.forEach(function (s, k) {
-        var dPar = Infinity;
-        for (var j = jIni; j < tramos.length; j++) { var t = tramos[j]; if (enTramo(t, s.x, s.cy)) { dPar = t.ini + Math.abs(s.x - t.a[0]) + Math.abs(s.cy - t.a[1]); jIni = j; break; } }
-        var cS = new T.Color(s.color || R.color);
-        var anillo = plano(rutaG, 1.25, 1.25, new T.MeshBasicMaterial({ color: cS, transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false, map: texAnillo() }), s.x, y0 + 0.012, s.cy, 0);
-        var lado = Math.abs(s.y - s.cy);
-        if (lado > 0.05) { var en = new T.Mesh(new T.BoxGeometry(0.14, 0.05, lado), mCore); en.position.set(s.x, y0 + 0.02, (s.y + s.cy) / 2); rutaG.add(en); }
-        var zf = s.y + (s.cy > s.y ? 1 : -1) * (dim.d / 2 + 0.34), hz = techoRacks + 2.6;   // columna de luz que asoma por encima de los racks
-        var haz = new T.Mesh(new T.CylinderGeometry(0.48, 0.48, hz, 28, 1, true), s.color ? new T.MeshBasicMaterial({ map: texHaz(), color: cS, transparent: true, opacity: 0.85, depthWrite: false, side: T.DoubleSide, toneMapped: false }) : mHaz.clone());
+        // distancia de la parada sobre el recorrido (la más cercana, después de la parada anterior)
+        var mejor = Infinity, dPar = dMin;
+        for (var i = 0; i < C.p.length; i++) { if (C.s[i] < dMin - 0.01) continue; var dd = Math.abs(C.p[i][0] - s.x) + Math.abs(C.p[i][1] - s.cy); if (dd < mejor - 1e-6) { mejor = dd; dPar = C.s[i]; } if (mejor < 0.05) break; }
+        dMin = dPar;
+        var color = s.color || R.color, sig = s.cy > s.y ? 1 : -1, zf = s.y + sig * (dim.d / 2 + 0.55);
+        // ramal curvo desde la ruta hasta el anillo frente a la posición
+        var P0 = puntoEn(C, Math.max(0, dPar - 1.4)), ram = caminoSuave([[P0.x, P0.z], [s.x, s.cy], [s.x, zf]], 1.0);
+        if (ram.L > 0.3) cinta(rutaG, ram, 0.36, 0, y0 + 0.008, color, 5);
+        var anillo = plano(rutaG, 1.5, 1.5, new T.MeshBasicMaterial({ color: new T.Color(color).lerp(new T.Color('#ffffff'), 0.35), transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false, map: texAnillo() }), s.x, y0 + 0.02, zf, 0);
+        anillo.renderOrder = 7;
+        var hz = s.z + dim.h * 0.95 + 0.9;
+        var haz = new T.Mesh(new T.CylinderGeometry(0.45, 0.45, hz, 28, 1, true), new T.MeshBasicMaterial({ map: texHaz(), color: new T.Color(color), transparent: true, opacity: 0.8, depthWrite: false, side: T.DoubleSide, toneMapped: false }));
         haz.position.set(s.x, hz / 2 + 0.02, zf); haz.renderOrder = 4; rutaG.add(haz);
+        var obj = s.marca ? null : cajaObjetivo(rutaG, s, color);
         if (s.marca) marcaPosicion(s);
-        else { var bx = new T.LineSegments(new T.EdgesGeometry(caj(dim.w * 0.98, dim.h * 0.92, dim.d + 0.1)), new T.LineBasicMaterial({ color: cS, toneMapped: false })); bx.position.set(s.x, s.z + dim.h * 0.45, s.y); rutaG.add(bx); }
-        var tex = texParada(s.num || String(k + 1), s.color || R.color, s.l1 || (s.uds + ' uds · ' + s.sku), corto(s.l2 != null ? s.l2 : s.nombre, 24));
+        var tex = texParada(s.num || String(k + 1), color, s.l1 || (s.uds + ' uds · ' + s.sku), corto(s.l2 != null ? s.l2 : s.nombre, 24));
         var texOk = texParada('✓', '#16A34A', s.l1 || (s.uds + ' uds · ' + s.sku), s.marca ? 'Hecho' : 'Recogido');
         texDeRuta.push(tex, texOk);
         var sp = new T.Sprite(new T.SpriteMaterial({ map: tex, depthTest: false, toneMapped: false }));
         sp.scale.set(2.3 * kE, 0.575 * kE, 1); sp.position.set(s.x, s.z + dim.h + 0.35 + 0.3 * kE + (s.dy || 0) * kE, s.y); sp.renderOrder = 20 + ri; rutaG.add(sp);
-        paradas.push({ d: dPar, anillo: anillo, haz: haz, sp: sp, tex: tex, texOk: texOk, hecho: false, flash: 0, k: k, col: cS, base: hz });
+        paradas.push({ d: dPar, anillo: anillo, haz: haz, obj: obj, sp: sp, tex: tex, texOk: texOk, hecho: false, flash: 0, k: k, col: new T.Color(color) });
       });
       var bola = carretillaRuta(R.color, kE);
-      rutaG.add(bola); bolas.push({ bola: bola, tramos: tramos, total: total, ang: null, paradas: paradas });
+      var aro = new T.Mesh(new T.PlaneGeometry(2.6, 2.6).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ map: texAnillo(), color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }));
+      aro.position.y = 0.03; aro.renderOrder = 6; bola.add(aro);
+      rutaG.add(bola); bolas.push({ bola: bola, C: C, desp: desp, total: C.L, ang: null, paradas: paradas });
     });
     var R0 = L[0];
-    var dep = new T.Mesh(new T.BoxGeometry(2.6, 0.1, 1.7), new T.MeshBasicMaterial({ color: 0x16a34a, toneMapped: false, transparent: true, opacity: 0.85 })); dep.position.set(R0.deposito.x, 0.06, R0.deposito.y); rutaG.add(dep);
+    var dep = plano(rutaG, 2.8, 2.8, new T.MeshBasicMaterial({ map: texAnillo(), color: 0x22c55e, transparent: true, opacity: 0.95, depthWrite: false, toneMapped: false }), R0.deposito.x, 0.06, R0.deposito.y, 0);
     var tDep = texEtiqueta('DESPACHO', '#16A34A', 380); texDeRuta.push(tDep);
     var spd = new T.Sprite(new T.SpriteMaterial({ map: tDep, depthTest: false, toneMapped: false }));
     spd.scale.set(3.0, 1.0, 1); spd.position.set(R0.deposito.x, 1.7, R0.deposito.y); spd.renderOrder = 30; rutaG.add(spd);
 
     var t0 = performance.now(), ultimo = 0, lentos = 0, verde = new T.Color('#22C55E');
     var poner = function (q, d) {
-      var t = q.tramos[0]; for (var j = 0; j < q.tramos.length; j++) if (d >= q.tramos[j].ini) t = q.tramos[j];
-      var f = Math.min(1, (d - t.ini) / t.L); q.bola.position.set(t.a[0] + (t.b[0] - t.a[0]) * f, 0, t.a[1] + (t.b[1] - t.a[1]) * f);
-      var meta = Math.atan2(t.b[0] - t.a[0], t.b[1] - t.a[1]);
-      if (q.ang == null || d === 0) q.ang = meta; else q.ang += Math.atan2(Math.sin(meta - q.ang), Math.cos(meta - q.ang)) * 0.3;
+      var p = puntoEn(q.C, d), nx = Math.cos(p.ang), nz = -Math.sin(p.ang);
+      q.bola.position.set(p.x + nx * q.desp, 0, p.z + nz * q.desp);
+      if (q.ang == null || d === 0) q.ang = p.ang; else q.ang += Math.atan2(Math.sin(p.ang - q.ang), Math.cos(p.ang - q.ang)) * 0.35;
       q.bola.rotation.y = q.ang;
     };
     var marcar = function (p, hecho) {
       if (p.hecho === hecho) return; p.hecho = hecho;
       p.sp.material.map = hecho ? p.texOk : p.tex; p.sp.material.needsUpdate = true; p.flash = hecho ? 1 : 0;
-      p.haz.material.color.copy(hecho ? verde : p.col); p.anillo.material.color.copy(hecho ? verde : p.col);
+      var c = hecho ? verde : p.col;
+      p.haz.material.color.copy(c); p.anillo.material.color.copy(c).lerp(new T.Color('#ffffff'), 0.35);
+      if (p.obj) { p.obj.brillo.material.color.copy(c); p.obj.vidrio.material.color.copy(c).lerp(new T.Color('#ffffff'), 0.45); }
     };
-    bolas.forEach(function (q) { if (q.tramos.length) poner(q, 0); });
+    bolas.forEach(function (q) { poner(q, 0); });
     rutaAnim = function (ahora) {
       if (ESTADO.vista !== 'posiciones') return;
       if (ultimo && ahora - ultimo < 33) return;
       if (ultimo && ahora - ultimo > 150) lentos++;
       var dt = ultimo ? Math.min(0.2, (ahora - ultimo) / 1000) : 0; ultimo = ahora;
-      if (lentos > 6) { bolas.forEach(function (q) { if (q.tramos.length) poner(q, 0); q.paradas.forEach(function (p) { marcar(p, false); }); }); rutaAnim = null; sucio = true; return; }
-      chev.offset.x -= dt * 1.1;                                          // las flechas avanzan en el sentido de la ruta
+      if (lentos > 6) { bolas.forEach(function (q) { poner(q, 0); q.paradas.forEach(function (p) { marcar(p, false); }); }); rutaAnim = null; sucio = true; return; }
+      cintasAnim.forEach(function (t) { t.offset.x -= dt * 1.0; });          // la estela fluye en el sentido de la ruta
       var seg = (ahora - t0) / 1000;
       bolas.forEach(function (q, qi) {
-        if (!q.tramos.length) return;
         var vel = Math.max(3, q.total / 16), ciclo = q.total / vel + 1.8, d = Math.min(q.total, (seg % ciclo) * vel);
         poner(q, d);
         q.paradas.forEach(function (p) {
           marcar(p, d >= p.d - 0.05);
-          var pulso = 1 + 0.22 * Math.sin(seg * 4.2 - p.k * 0.6) + p.flash * 0.9;
+          var pulso = 1 + 0.18 * Math.sin(seg * 4.2 - p.k * 0.6) + p.flash * 0.8;
           p.anillo.scale.set(pulso, 1, pulso);
-          p.haz.material.opacity = Math.min(1, 0.7 + 0.15 * Math.sin(seg * 3 - p.k * 0.6) + p.flash * 0.3);
-          p.haz.scale.set(1 + p.flash * 0.6, 1, 1 + p.flash * 0.6);
+          p.haz.material.opacity = Math.min(1, 0.65 + 0.15 * Math.sin(seg * 3 - p.k * 0.6) + p.flash * 0.3);
+          if (p.obj) { var o = 0.16 + 0.1 * (0.5 + 0.5 * Math.sin(seg * 3.4 - p.k * 0.6)) + p.flash * 0.3; p.obj.vidrio.material.opacity = o; p.obj.brillo.material.opacity = 0.5 + o; }
           if (p.flash > 0) p.flash = Math.max(0, p.flash - dt * 1.6);
         });
         if (qi === 0 && ESTADO.seguir) {                                   // cámara detrás de la carretilla
@@ -4092,7 +4155,7 @@ ACCIONES.optAplicarTodas = function () {
    · Órdenes de compra desde Stock y quiebres (una orden por proveedor) y pestaña Compras.          */
 
 /* ---------- Huecos libres en 3D ---------- */
-COLOR.Libre = '#D946EF';   // fucsia: no se confunde con ocupado (azul) ni con los colores de rotación
+COLOR.Libre = '#22C55E';   // verde: hueco disponible (se distingue de las cajas por el cristal con «+»)
 /** Las cajas de hueco libre se ven sin filtros o con el filtro «Solo libres». */
 function verHuecosLibres() {
   if (focoOpt()) return true;
@@ -4546,9 +4609,9 @@ ACCIONES.ocPdf = function (id) {
 
 
 /* ===================== MEJORAS 16/11/2026: ficha al pasar el ratón y ruta destacada ===================== */
-ESTADO.seguir = false; ESTADO.focoRuta = true;
+ESTADO.seguir = false; ESTADO.focoRuta = true;   // focoRuta: ocultar las posiciones que no están en la ruta
 
-/* ---------- Ruta en primer plano: el resto de la bodega pasa a gris ---------- */
+/* ---------- Ruta en primer plano: se ocultan las posiciones que no intervienen ---------- */
 var _focoRuta = { rutas: null, set: null };
 function focoRuta() {
   var R = ESTADO.rutas || [];
@@ -4561,7 +4624,8 @@ function focoRuta() {
   return _focoRuta.set;
 }
 var colorUbiMej = colorUbi;
-colorUbi = function (x) { var f = focoRuta(); return f ? (f[x.u.id] || '#C3CAD4') : colorUbiMej(x); };
+var pasaFiltroMej2 = pasaFiltro;
+pasaFiltro = function (x) { var f = focoRuta(); return f ? !!f[x.u.id] : pasaFiltroMej2(x); };
 var aplicarRutasMej2 = aplicarRutas;
 aplicarRutas = function (enfocar) { var r = aplicarRutasMej2(enfocar); _focoRuta.rutas = null; if (BODEGA.actualizar) BODEGA.actualizar(); return r; };
 var pintarControlRutasMej2 = pintarControlRutas;
@@ -4571,7 +4635,8 @@ pintarControlRutas = function () {
   var rep = b.querySelector('[data-accion="repetirRuta"]'); if (!rep) return;
   var html = '<button class="btn mini rt-sig' + (ESTADO.seguir ? ' activo' : '') + '" data-accion="rutaSeguir" aria-pressed="' + !!ESTADO.seguir + '" title="La cámara va detrás de la carretilla">' +
     (ESTADO.seguir ? '■ Dejar de seguir' : '▶ Seguir la carretilla') + '</button>';
-  if (ESTADO.rutaSel !== 'opt') html += '<button class="btn mini' + (ESTADO.focoRuta !== false ? ' activo' : '') + '" data-accion="rutaFoco" aria-pressed="' + (ESTADO.focoRuta !== false) + '" title="Pasa a gris lo que no está en la ruta">Destacar ruta</button>';
+  if (ESTADO.rutaSel !== 'opt') html += '<button class="btn mini' + (ESTADO.focoRuta !== false ? ' activo' : '') + '" data-accion="rutaFoco" aria-pressed="' + (ESTADO.focoRuta !== false) + '" title="Muestra u oculta las posiciones que no están en la ruta">' +
+    (ESTADO.focoRuta !== false ? 'Mostrar todas las posiciones' : 'Ocultar posiciones no involucradas') + '</button>';
   rep.insertAdjacentHTML('beforebegin', html);
 };
 ACCIONES.rutaSeguir = function () {

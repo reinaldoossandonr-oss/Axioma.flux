@@ -4,7 +4,7 @@
    · Órdenes de compra desde Stock y quiebres (una orden por proveedor) y pestaña Compras.          */
 
 /* ---------- Huecos libres en 3D ---------- */
-COLOR.Libre = '#D946EF';   // fucsia: no se confunde con ocupado (azul) ni con los colores de rotación
+COLOR.Libre = '#22C55E';   // verde: hueco disponible (se distingue de las cajas por el cristal con «+»)
 /** Las cajas de hueco libre se ven sin filtros o con el filtro «Solo libres». */
 function verHuecosLibres() {
   if (focoOpt()) return true;
@@ -458,9 +458,9 @@ ACCIONES.ocPdf = function (id) {
 
 
 /* ===================== MEJORAS 16/11/2026: ficha al pasar el ratón y ruta destacada ===================== */
-ESTADO.seguir = false; ESTADO.focoRuta = true;
+ESTADO.seguir = false; ESTADO.focoRuta = true;   // focoRuta: ocultar las posiciones que no están en la ruta
 
-/* ---------- Ruta en primer plano: el resto de la bodega pasa a gris ---------- */
+/* ---------- Ruta en primer plano: se ocultan las posiciones que no intervienen ---------- */
 var _focoRuta = { rutas: null, set: null };
 function focoRuta() {
   var R = ESTADO.rutas || [];
@@ -473,7 +473,8 @@ function focoRuta() {
   return _focoRuta.set;
 }
 var colorUbiMej = colorUbi;
-colorUbi = function (x) { var f = focoRuta(); return f ? (f[x.u.id] || '#C3CAD4') : colorUbiMej(x); };
+var pasaFiltroMej2 = pasaFiltro;
+pasaFiltro = function (x) { var f = focoRuta(); return f ? !!f[x.u.id] : pasaFiltroMej2(x); };
 var aplicarRutasMej2 = aplicarRutas;
 aplicarRutas = function (enfocar) { var r = aplicarRutasMej2(enfocar); _focoRuta.rutas = null; if (BODEGA.actualizar) BODEGA.actualizar(); return r; };
 var pintarControlRutasMej2 = pintarControlRutas;
@@ -483,7 +484,8 @@ pintarControlRutas = function () {
   var rep = b.querySelector('[data-accion="repetirRuta"]'); if (!rep) return;
   var html = '<button class="btn mini rt-sig' + (ESTADO.seguir ? ' activo' : '') + '" data-accion="rutaSeguir" aria-pressed="' + !!ESTADO.seguir + '" title="La cámara va detrás de la carretilla">' +
     (ESTADO.seguir ? '■ Dejar de seguir' : '▶ Seguir la carretilla') + '</button>';
-  if (ESTADO.rutaSel !== 'opt') html += '<button class="btn mini' + (ESTADO.focoRuta !== false ? ' activo' : '') + '" data-accion="rutaFoco" aria-pressed="' + (ESTADO.focoRuta !== false) + '" title="Pasa a gris lo que no está en la ruta">Destacar ruta</button>';
+  if (ESTADO.rutaSel !== 'opt') html += '<button class="btn mini' + (ESTADO.focoRuta !== false ? ' activo' : '') + '" data-accion="rutaFoco" aria-pressed="' + (ESTADO.focoRuta !== false) + '" title="Muestra u oculta las posiciones que no están en la ruta">' +
+    (ESTADO.focoRuta !== false ? 'Mostrar todas las posiciones' : 'Ocultar posiciones no involucradas') + '</button>';
   rep.insertAdjacentHTML('beforebegin', html);
 };
 ACCIONES.rutaSeguir = function () {
