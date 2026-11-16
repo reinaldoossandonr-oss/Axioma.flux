@@ -1544,7 +1544,6 @@ var BODEGA = (function () {
     marco.renderOrder = 5; marco.visible = false; grupo.add(marco);
 
     carretilla(minX - W / 2 - 3.4, maxZ + 4.4, 0.6);
-    crearHaces();
     // Palés vacíos apilados junto a la pared
     for (var k = 0; k < 6; k++) malla(caj(1.2, 0.14, 1.0), M.madera, maxX + W / 2 + 3.4, 0.07 + k * 0.15, minZ - 3.4, grupo).rotation.y = (k % 2) * 0.06;
     actualizar();
