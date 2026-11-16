@@ -592,7 +592,7 @@ js = cambiar(js, "  var grupo, cargas, bandas, etiquetas, huecos, marco, orden =
     "  }\n")
 js = cambiar(js, "huecos = inst(caj(W * 0.96, H * 0.9, Dp), M.hueco, n, false);",
     "huecos = inst(caj(W * 0.96, H * 0.9, Dp), M.hueco, n, false);\n"
-    "    vacias = inst(caj(1, 1, 1), new T.MeshBasicMaterial({ map: texVacia(), color: 0x22d3ee, transparent: true, depthWrite: false, side: T.DoubleSide, toneMapped: false }), n, false); vacias.renderOrder = 2;")
+    "    vacias = inst(caj(1, 1, 1), new T.MeshBasicMaterial({ map: texVacia(), color: new T.Color(COLOR.Libre), transparent: true, depthWrite: false, side: T.DoubleSide, toneMapped: false }), n, false); vacias.renderOrder = 2;")
 js = cambiar(js, "        cargas.setMatrixAt(i, cero); bandas.setMatrixAt(i, cero); cargas.setColorAt(i, col.setRGB(1, 1, 1));\n      }\n      if (pasa) {",
     "        cargas.setMatrixAt(i, cero); bandas.setMatrixAt(i, cero); cargas.setColorAt(i, col.setRGB(1, 1, 1));\n      }\n"
     "      if (!hay && pasa && verLibres) { var hv = dim.h * 0.62; poner(vacias, i, u.x, y + hv / 2 + 0.03, u.y, dim.w * 0.84, hv, Dp * 0.84); } else vacias.setMatrixAt(i, cero);\n"
@@ -680,6 +680,21 @@ cuerpo = cambiar(cuerpo, '      <!-- AJUSTES (SaaS) -->', """      <section clas
 cuerpo = cambiar(cuerpo, '<div id="aviso"></div>', '<div id="oc-fondo" hidden data-accion="ocCerrar"></div><div id="oc-modal" role="dialog" aria-modal="true" aria-labelledby="oc-titulo" hidden></div>\n<div id="aviso"></div>')
 css_panel += _aqui.joinpath("mejoras.css").read_text(encoding="utf-8")
 js = cambiar(js, "\n/* ===================== ARRANQUE ===================== */", "\n" + _aqui.joinpath("mejoras.js").read_text(encoding="utf-8") + "\n/* ===================== ARRANQUE ===================== */")
+
+
+# ---------------- Mejoras 16/11/2026: suelo realista, señalética, ficha al pasar el ratón y ruta destacada ----------------
+_m3d = _aqui.joinpath("mejoras3d.js").read_text(encoding="utf-8")
+_i = js.index("  function dibujarRuta() {\n"); _j = js.index("  function verRuta() {", _i)
+js = js[:_i] + _m3d + js[_j:]
+js = cambiar(js, "piso: new T.MeshStandardMaterial({ map: texHormigon(), roughness: 0.62, metalness: 0.08 })", "piso: new T.MeshStandardMaterial({ map: texSuelo('#868b93'), roughness: 0.5, metalness: 0.08 })")
+js = cambiar(js, "    construirRacks(U, W, H, Dp);\n", "    senaletica(W, Dp);\n    construirRacks(U, W, H, Dp);\n")
+js = cambiar(js, "    function sobre(e) { el.style.cursor = buscar(e) ? 'pointer' : 'grab'; }",
+    "    function sobre(e) { var id = buscar(e); el.style.cursor = id ? 'pointer' : 'grab'; resaltarHover(id); if (window.fichaHover) fichaHover(id, e); }\n"
+    "    el.addEventListener('pointerleave', function () { resaltarHover(null); if (window.fichaHover) fichaHover(null); });")
+js = cambiar(js, "      ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0;",
+    "      resaltarHover(null); if (window.fichaHover) fichaHover(null);\n"
+    "      if (ESTADO.seguir) { ESTADO.seguir = false; if (window.pintarControlRutas) pintarControlRutas(); }\n"
+    "      ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0;")
 
 # ---------------- Escritura ----------------
 app = FRONT / "src/app/app"

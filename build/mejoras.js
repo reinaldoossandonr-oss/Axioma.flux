@@ -4,10 +4,11 @@
    · Órdenes de compra desde Stock y quiebres (una orden por proveedor) y pestaña Compras.          */
 
 /* ---------- Huecos libres en 3D ---------- */
-COLOR.Libre = '#22D3EE';
+COLOR.Libre = '#D946EF';   // fucsia: no se confunde con ocupado (azul) ni con los colores de rotación
 /** Las cajas de hueco libre se ven sin filtros o con el filtro «Solo libres». */
 function verHuecosLibres() {
   if (focoOpt()) return true;
+  if (focoRuta()) return false;
   var f = ESTADO.filtro || {};
   if (f.disp === 'libre') return true;
   return !(f.categoria || f.rotacion || f.disp || f.pasillo || ESTADO.resaltar);
@@ -454,3 +455,88 @@ ACCIONES.ocPdf = function (id) {
     if (b) { b.disabled = false; b.textContent = 'Descargar PDF'; }
   }, function () { if (b) { b.disabled = false; b.textContent = 'Descargar PDF'; } });
 };
+
+
+/* ===================== MEJORAS 16/11/2026: ficha al pasar el ratón y ruta destacada ===================== */
+ESTADO.seguir = false; ESTADO.focoRuta = true;
+
+/* ---------- Ruta en primer plano: el resto de la bodega pasa a gris ---------- */
+var _focoRuta = { rutas: null, set: null };
+function focoRuta() {
+  var R = ESTADO.rutas || [];
+  if (!R.length || !ESTADO.rutaSel || ESTADO.rutaSel === 'opt' || ESTADO.focoRuta === false) return null;
+  if (_focoRuta.rutas !== R) {
+    var porPos = {}; (D.ubicaciones || []).forEach(function (u) { porPos[u.pos] = u.id; });
+    var set = {}; R.forEach(function (r) { (r.paradas || []).forEach(function (p) { if (porPos[p.pos]) set[porPos[p.pos]] = r.color || COLORES_RUTA[0]; }); });
+    _focoRuta = { rutas: R, set: set };
+  }
+  return _focoRuta.set;
+}
+var colorUbiMej = colorUbi;
+colorUbi = function (x) { var f = focoRuta(); return f ? (f[x.u.id] || '#C3CAD4') : colorUbiMej(x); };
+var aplicarRutasMej2 = aplicarRutas;
+aplicarRutas = function (enfocar) { var r = aplicarRutasMej2(enfocar); _focoRuta.rutas = null; if (BODEGA.actualizar) BODEGA.actualizar(); return r; };
+var pintarControlRutasMej2 = pintarControlRutas;
+pintarControlRutas = function () {
+  pintarControlRutasMej2();
+  var b = $('b-ruta'), R = ESTADO.rutas || []; if (!b || !R.length) return;
+  var rep = b.querySelector('[data-accion="repetirRuta"]'); if (!rep) return;
+  var html = '<button class="btn mini rt-sig' + (ESTADO.seguir ? ' activo' : '') + '" data-accion="rutaSeguir" aria-pressed="' + !!ESTADO.seguir + '" title="La cámara va detrás de la carretilla">' +
+    (ESTADO.seguir ? '■ Dejar de seguir' : '▶ Seguir la carretilla') + '</button>';
+  if (ESTADO.rutaSel !== 'opt') html += '<button class="btn mini' + (ESTADO.focoRuta !== false ? ' activo' : '') + '" data-accion="rutaFoco" aria-pressed="' + (ESTADO.focoRuta !== false) + '" title="Pasa a gris lo que no está en la ruta">Destacar ruta</button>';
+  rep.insertAdjacentHTML('beforebegin', html);
+};
+ACCIONES.rutaSeguir = function () {
+  ESTADO.seguir = !ESTADO.seguir;
+  if (ESTADO.seguir) BODEGA.ruta(false); else BODEGA.ruta(true);
+  pintarControlRutas();
+};
+ACCIONES.rutaFoco = function () { ESTADO.focoRuta = ESTADO.focoRuta === false; _focoRuta.rutas = null; BODEGA.actualizar(); pintarControlRutas(); };
+var mostrarMej2 = mostrar;
+mostrar = function (vista) { if (vista !== 'posiciones') { ESTADO.seguir = false; if (window.fichaHover) fichaHover(null); } return mostrarMej2(vista); };
+
+/* ---------- Ficha de la posición al pasar el ratón ---------- */
+var ICONOS = {
+  taladro: '<path d="M10 18h22a5 5 0 0 1 5 5v2a5 5 0 0 1-5 5H24l-2 13h-8l3-13h-7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3z"/><path d="M37 21.5h7M37 26.5h5" stroke-linecap="round"/>',
+  llave: '<path d="M33 8a9 9 0 0 0-8.6 11.7L9.7 34.4a3.7 3.7 0 0 0 5.2 5.2l14.7-14.7A9 9 0 0 0 40.8 13l-5.4 5.4-4.2-1.2-1.2-4.2L35.4 7.6A9 9 0 0 0 33 8z" stroke-linejoin="round"/>',
+  tornillo: '<path d="M16 9h16v7H16z" stroke-linejoin="round"/><path d="M19 16v20l5 6 5-6V16" stroke-linejoin="round"/><path d="M19 21l10 3M19 26l10 3M19 31l10 3" stroke-linecap="round"/>',
+  pintura: '<path d="M11 17h26l-3 22a3 3 0 0 1-3 2.6H17a3 3 0 0 1-3-2.6z" stroke-linejoin="round"/><path d="M11 17c0-3 6-5 13-5s13 2 13 5" /><path d="M24 22v7" stroke-linecap="round"/><circle cx="24" cy="31.5" r="2.4"/>',
+  bombilla: '<path d="M24 7a12 12 0 0 0-7 21.8c1.3 1 2 2.4 2 4V35h10v-2.2c0-1.6.7-3 2-4A12 12 0 0 0 24 7z" stroke-linejoin="round"/><path d="M19.5 39.5h9M21 43.5h6" stroke-linecap="round"/>',
+  hoja: '<path d="M38 9C22 9 11 17 11 29c0 3 1 6 3 8 3-9 10-15 18-18-7 5-12 11-14 19 2 1 4 1 6 1 12 0 16-12 14-30z" stroke-linejoin="round"/>',
+  caja: '<path d="M8 15l16-7 16 7v18l-16 7-16-7z" stroke-linejoin="round"/><path d="M8 15l16 7 16-7M24 22v18" stroke-linejoin="round"/>',
+  libre: '<path d="M10 14h28v22H10z" stroke-dasharray="4 3.2" stroke-linejoin="round"/><path d="M24 19v12M18 25h12" stroke-linecap="round"/>'
+};
+function iconoCategoria(cat) {
+  var c = String(cat || '').toLowerCase();
+  var k = /ilumin|electricidad/.test(c) ? 'bombilla' : /el[eé]ctric/.test(c) ? 'taladro' : /manual/.test(c) ? 'llave' : /fijac|torn/.test(c) ? 'tornillo'
+    : /pintur|adhes/.test(c) ? 'pintura' : /jard|exterior/.test(c) ? 'hoja' : 'caja';
+  return '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">' + ICONOS[k] + '</svg>';
+}
+var FICHA = { id: null };
+function htmlFicha(x) {
+  var u = x.u, it = x.it, lugar = 'Pasillo ' + esc(u.pasillo) + ' · rack ' + u.rack + ' · nivel ' + u.nivel;
+  if (!it) return '<div class="bf-foto bf-libre"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">' + ICONOS.libre + '</svg></div>' +
+    '<div class="bf-txt"><div class="bf-pos"><b>' + esc(u.pos) + '</b><span class="bf-tag">Hueco libre</span></div>' +
+    '<div class="bf-nom">Posición disponible</div><div class="bf-sub">' + lugar + '</div><div class="bf-nota">Lista para recibir mercancía o una reubicación.</div></div>';
+  var p = it.p, col = PALETA[Math.max(0, C.categorias.indexOf(p.categoria)) % PALETA.length], rot = { Alta: 'verde', Media: 'ambar', Baja: 'rojo' }[it.rot] || 'gris';
+  var foto = p.imagen ? '<img src="' + esc(p.imagen) + '" alt="">' : iconoCategoria(p.categoria);
+  return '<div class="bf-foto" style="--c:' + col + '">' + foto + '</div><div class="bf-txt">' +
+    '<div class="bf-pos"><b>' + esc(u.pos) + '</b><span class="bf-lugar">' + lugar + '</span></div>' +
+    '<div class="bf-nom">' + esc(p.nombre) + '</div><div class="bf-sub">' + esc(p.sku) + ' · ' + esc(p.categoria) + '</div>' +
+    '<div class="bf-datos"><span><b>' + num(x.stock || 0) + '</b>uds aquí</span><span><b>' + num(it.stock) + '</b>en total</span><span><b>' + (it.dias == null ? '—' : num(it.dias)) + '</b>días de stock</span></div>' +
+    '<div class="bf-chips">' + chip(ALERTA[it.alerta][0], ALERTA[it.alerta][1]) + chip(rot, 'Rotación ' + String(it.rot || '').toLowerCase()) + '</div></div>';
+}
+function fichaHover(id, ev) {
+  var cont = $('lienzo'); if (!cont) return;
+  var f = $('b-ficha');
+  if (!f) { cont.insertAdjacentHTML('beforeend', '<div id="b-ficha" role="tooltip"></div>'); f = $('b-ficha'); }
+  var x = id ? C.ubi[id] : null;
+  if (!x || !ev) { f.classList.remove('ver'); FICHA.id = null; return; }
+  if (FICHA.id !== id) { f.innerHTML = htmlFicha(x); FICHA.id = id; }
+  var r = cont.getBoundingClientRect(), fw = f.offsetWidth || 320, fh = f.offsetHeight || 150;
+  var px = ev.clientX - r.left + 18, py = ev.clientY - r.top + 20;
+  if (px + fw > r.width - 10) px = ev.clientX - r.left - fw - 18;
+  if (py + fh > r.height - 10) py = ev.clientY - r.top - fh - 16;
+  f.style.transform = 'translate(' + Math.round(Math.max(10, px)) + 'px,' + Math.round(Math.max(10, py)) + 'px)';
+  f.classList.add('ver');
+}

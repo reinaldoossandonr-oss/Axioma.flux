@@ -95,7 +95,7 @@
     regional: { nombre: 'Centro regional · cross-docking', caja: 'carton', pilar: 0x1c4f9c, viga: 0xf0661a, linea: 0x2e7d32,
       nave: function (c) {
         paredes(c, mat({ map: texPanelClaro('#dfe3e8', '#2e7d32'), roughness: 0.75, metalness: 0.15 }), mat({ color: 0x2e7d32, roughness: 0.6 }));
-        piso(c, mat({ map: texPlano('#b9bcc1', 'rgba(0,0,0,.18)', 0, 0, 0.05), roughness: 0.45, metalness: 0.1 }), 5);
+        piso(c, mat({ map: texSuelo('#a9adb3'), roughness: 0.42, metalness: 0.1 }), 6);
         // Andenes en la pared del fondo: portones numerados, sellos, topes y semáforos
         var nAnd = Math.max(3, Math.min(18, Math.floor(c.largo / 4.6))), sep = (c.largo - 6) / nAnd;
         for (var i = 0; i < nAnd; i++) {
@@ -126,7 +126,7 @@
     frio: { nombre: 'Centro de frío · cámara −18 °C', caja: 'cubeta', pilar: 0x1c4f9c, viga: 0xf0661a, linea: 0x1e88e5, fondo: 0xcfe0f2,
       nave: function (c) {
         paredes(c, mat({ map: texPanelClaro('#f4f7fa', '#1565c0'), roughness: 0.55, metalness: 0.1 }), mat({ color: 0x1565c0, roughness: 0.5 }));
-        piso(c, mat({ map: texPlano('#c9d3de', null, 0, 0, 0.035), roughness: 0.25, metalness: 0.15 }), 8);
+        piso(c, mat({ map: texSuelo('#c3ccd6', { limpio: true }), roughness: 0.25, metalness: 0.15 }), 8);
         // Puerta frigorífica con cortina de lamas translúcidas
         var xp = c.maxX + c.W / 2 + 3.2;
         malla(caj(3.6, 4.0, 0.2), mat({ color: 0xe8edf2, roughness: 0.4, metalness: 0.3 }), xp, 2.0, c.zPared + 0.12, c.pared1);
@@ -149,7 +149,7 @@
     ecommerce: { nombre: 'Hub e-commerce · fulfillment', caja: 'cubeta', pilar: 0x1c4f9c, viga: 0xf0661a, linea: 0xf2b705, fondo: null,
       nave: function (c) {
         paredes(c, mat({ map: texPanelClaro('#e6e9ee', '#f2b705'), roughness: 0.7, metalness: 0.2 }), M.amarillo);
-        piso(c, mat({ map: texPlano('#5b6470', null, 0, 0, 0.05), roughness: 0.3, metalness: 0.2 }), 6);
+        piso(c, mat({ map: texSuelo('#727a84'), roughness: 0.34, metalness: 0.16 }), 6);
         // Cinta transportadora de rodillos, fuera del pasillo delantero por el que circulan las carretillas
         var zc = c.maxZ + 5.2, x0 = c.minX - c.W / 2 - 1, x1 = c.maxX + c.W / 2 + 1, lon = x1 - x0, xm = (x0 + x1) / 2;
         malla(caj(lon, 0.08, 0.9), M.acero, xm, 0.9, zc, grupo);
