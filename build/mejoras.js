@@ -542,3 +542,12 @@ function fichaHover(id, ev) {
   f.style.transform = 'translate(' + Math.round(Math.max(10, px)) + 'px,' + Math.round(Math.max(10, py)) + 'px)';
   f.classList.add('ver');
 }
+
+/* ---------- Vista «Real»: cartón natural; el estado va en la etiqueta de la viga ---------- */
+var leyendaColorMej = leyendaColor;
+leyendaColor = function () {
+  if (ESTADO.color !== 'real') return leyendaColorMej();
+  var oc = 0, li = 0; D.ubicaciones.forEach(function (u) { var x = C.ubi[u.id]; if (!pasaFiltro(x)) return; if (x.it) oc++; else li++; });
+  return '<span><i style="background:#C99A63"></i>Vista real · ' + num(oc) + ' palés</span><span><i style="background:' + COLOR.Alta + '"></i>Etiqueta: rotación</span>' +
+    (li ? '<span><i style="background:' + COLOR.Libre + '"></i>Hueco libre · ' + num(li) + '</span>' : '');
+};

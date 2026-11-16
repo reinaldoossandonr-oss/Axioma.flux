@@ -696,6 +696,24 @@ js = cambiar(js, "      ini = { x: e.clientX, y: e.clientY, boton: e.button, may
     "      if (ESTADO.seguir) { ESTADO.seguir = false; if (window.pintarControlRutas) pintarControlRutas(); }\n"
     "      ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0;")
 
+
+# ---------------- Acabado premium 16/11/2026: vista Real, palés naturales, sombras de contacto, haces de luz, inercia y vuelo inicial ----------------
+cuerpo = cambiar(cuerpo, '<div class="seg" id="b-color"><button data-color="rotacion">Rotación</button>', '<div class="seg" id="b-color"><button data-color="real">Real</button><button data-color="rotacion">Rotación</button>')
+js = cambiar(js, "guardarLocal('color', ESTADO.color);", "guardarLocal('color3d', ESTADO.color);")
+js = cambiar(js, "ESTADO.color = leerLocal('color') || 'rotacion';", "ESTADO.color = leerLocal('color3d') || 'real';")
+js = cambiar(js, "['rotacion', 'disponibilidad', 'categoria', 'quiebre'].indexOf(ESTADO.color) === -1) ESTADO.color = 'rotacion';", "['real', 'rotacion', 'disponibilidad', 'categoria', 'quiebre'].indexOf(ESTADO.color) === -1) ESTADO.color = 'real';")
+js = cambiar(js, "        poner(cargas, i, u.x, y + 0.14 + h / 2, u.y, 1, h, 1); poner(bandas, i, u.x, y + 0.14 + h * 0.62, u.y);",
+                 "        ponerCarga(o, i, u.x, y + 0.14 + h / 2, u.y, h); poner(bandas, i, u.x, y + 0.14 + h * 0.62, u.y, 0.96, 1, 0.96);")
+js = cambiar(js, "      var x = C.ubi[u.id]; col.set(colorUbi(x));\n      etiquetas.setColorAt(i, col);\n      var tono = x.it ? tonoCaja(colorUbi(x), i) : new T.Color(1, 1, 1);",
+                 "      var x = C.ubi[u.id], real = ESTADO.color === 'real'; col.set(real ? (x.it ? COLOR[x.it.rot] : COLOR.Libre) : colorUbi(x));\n      etiquetas.setColorAt(i, col);\n      var tono = x.it ? (real ? new T.Color(tonoReal(x, i)) : tonoCaja(colorUbi(x), i)) : new T.Color(1, 1, 1);")
+js = cambiar(js, "    senaletica(W, Dp);\n    construirRacks(U, W, H, Dp);\n", "    senaletica(W, Dp); sombrasContacto(U, W, Dp);\n    construirRacks(U, W, H, Dp);\n")
+js = cambiar(js, "    carretilla(minX - W / 2 - 3.4, maxZ + 4.4, 0.6);\n", "    carretilla(minX - W / 2 - 3.4, maxZ + 4.4, 0.6);\n    crearHaces();\n")
+js = cambiar(js, "      ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0;", "      iner.on = false; iner.th = iner.ph = 0;\n      ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0;")
+js = cambiar(js, "        orb.theta -= dx * 0.006; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi - dy * 0.005));", "        orb.theta -= dx * 0.006; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi - dy * 0.005)); iner.th = -dx * 0.006; iner.ph = -dy * 0.005;")
+js = cambiar(js, "      var era = punteros[e.pointerId]; delete punteros[e.pointerId];", "      var era = punteros[e.pointerId]; delete punteros[e.pointerId];\n      if (era && movido >= 6 && !Object.keys(punteros).length && !(ini && (ini.boton === 2 || ini.mayus))) iner.on = true;")
+js = cambiar(js, "    if (rutaAnim) rutaAnim(ahora);\n", "    if (rutaAnim) rutaAnim(ahora);\n    inercia();\n")
+js = cambiar(js, "calidad(); ajustar(); enfocar(false); construida = true;", "calidad(); ajustar(); enfocar(false); vueloInicial(); construida = true;")
+js = cambiar(js, "    escena.background.set(c); escena.fog.color.set(c); sucio = true;", "    escena.background.set(c); escena.fog.color.set(c); if (hacesLuz) hacesLuz.visible = !document.body.classList.contains('claro'); sucio = true;")
 # ---------------- Escritura ----------------
 app = FRONT / "src/app/app"
 app.mkdir(parents=True, exist_ok=True)

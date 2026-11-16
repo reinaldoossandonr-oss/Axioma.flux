@@ -393,3 +393,76 @@
       g.fillStyle = gr; g.fillRect(0, 0, w, w);
     });
   }
+
+  /* ===================== ACABADO PREMIUM 16/11/2026 =====================
+     · Vista «Real»: cajas de cartón kraft y blancas, con el estado en la etiqueta de la viga.
+     · Palés con pequeñas variaciones (tamaño y giro) para un aspecto natural.
+     · Sombras de contacto bajo racks y palés de suelo.
+     · Haces de luz bajo las luminarias en el tema oscuro.
+     · Inercia al girar la cámara y vuelo de entrada al abrir la bodega.                 */
+  var KRAFT = ['#C99A63', '#BD8B55', '#D3A873', '#B07E4B', '#E6E1D6', '#C49460', '#EFEBE2'];
+  function tonoReal(x, i) { var h = (i * 2654435761) >>> 0; return KRAFT[h % KRAFT.length]; }
+  function ruido01(i, k) { var s = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return s - Math.floor(s); }
+  /** Coloca la carga de un palé con un ligero desorden (no hay dos palés idénticos). */
+  function ponerCarga(o, i, px, py, pz, h) {
+    o.position.set(px + (ruido01(i, 1) - 0.5) * 0.05, py, pz + (ruido01(i, 2) - 0.5) * 0.05);
+    o.scale.set(0.93 + ruido01(i, 3) * 0.07, h, 0.92 + ruido01(i, 4) * 0.08);
+    o.rotation.set(0, (ruido01(i, 5) - 0.5) * 0.07, 0); o.updateMatrix(); cargas.setMatrixAt(i, o.matrix);
+  }
+  function texSombra() {
+    return decal('sombra', 128, 128, function (g, w, h) {
+      var gr = g.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w * 0.5);
+      gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.6, 'rgba(0,0,0,.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    });
+  }
+  /** Sombras suaves de contacto bajo cada tramo de rack (dan peso y profundidad a la escena). */
+  function sombrasContacto(U, W, Dp) {
+    var filas = {}; U.forEach(function (u) { (filas[u.y] = filas[u.y] || []).push(Number(u.x)); });
+    var m = new T.MeshBasicMaterial({ map: texSombra(), color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    Object.keys(filas).forEach(function (zy) {
+      var xs = unicos(filas[zy].map(String)).map(Number).sort(function (a, b) { return a - b; }), ini = xs[0];
+      var tramo = function (a, b) { var g = new T.PlaneGeometry(b - a + W + 1.1, Dp + 1.3); g.rotateX(-Math.PI / 2); var me = new T.Mesh(g, m); me.position.set((a + b) / 2, 0.012, Number(zy)); me.renderOrder = 0; grupo.add(me); };
+      for (var i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] > W * 1.5) { tramo(ini, xs[i - 1]); ini = xs[i]; }
+      tramo(ini, xs[xs.length - 1]);
+    });
+  }
+  /** Haces de luz bajo las luminarias (solo en el tema oscuro, donde se aprecian). */
+  var hacesLuz = null;
+  function texCono() {
+    return texCompartida('cono', 64, 256, function (g, w, h) {
+      var gy = g.createLinearGradient(0, 0, 0, h); gy.addColorStop(0, 'rgba(255,255,255,.9)'); gy.addColorStop(0.5, 'rgba(255,255,255,.3)'); gy.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gy; g.fillRect(0, 0, w, h);
+    });
+  }
+  function crearHaces() {
+    hacesLuz = new T.Group(); grupo.add(hacesLuz);
+    var mat = new T.MeshBasicMaterial({ map: texCono(), color: 0xfff1d6, transparent: true, opacity: 0.075, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false });
+    var pos = new T.Vector3(), caja3 = new T.Box3();
+    grupo.updateMatrixWorld(true);
+    grupo.traverse(function (o) {
+      if (!o.isMesh || o.material !== M.lampara || !o.geometry) return;
+      caja3.setFromObject(o); var tam = caja3.getSize(new T.Vector3()); caja3.getCenter(pos);
+      var largo = Math.max(tam.x, tam.z), alto = Math.max(3, pos.y - 0.2), n = Math.max(1, Math.round(largo / 7)), enX = tam.x >= tam.z;
+      for (var k = 0; k < n; k++) {
+        var f = n === 1 ? 0 : (k / (n - 1) - 0.5) * (largo - 4), cono = new T.Mesh(new T.CylinderGeometry(0.35, 3.4, alto, 24, 1, true), mat);
+        cono.position.set(pos.x + (enX ? f : 0), alto / 2, pos.z + (enX ? 0 : f)); cono.renderOrder = 10; cono.raycast = function () {}; hacesLuz.add(cono);
+      }
+    });
+    hacesLuz.visible = !document.body.classList.contains('claro');
+  }
+  /** Inercia: la cámara sigue girando un instante al soltar el ratón. */
+  var iner = { th: 0, ph: 0, on: false };
+  function inercia() {
+    if (!iner.on) return;
+    orb.theta += iner.th; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi + iner.ph));
+    iner.th *= 0.9; iner.ph *= 0.9; if (Math.abs(iner.th) + Math.abs(iner.ph) < 2e-4) iner.on = false;
+    sucio = true;
+  }
+  /** Vuelo de entrada: la cámara llega desde lo alto hasta la vista general. */
+  function vueloInicial() {
+    var fin = {}; for (var k in orb) fin[k] = orb[k];
+    var ini = { tx: fin.tx, ty: fin.ty, tz: fin.tz, radio: fin.radio * 1.9, theta: fin.theta - 1.1, phi: 0.38 }, t0 = performance.now();
+    for (var k2 in ini) orb[k2] = ini[k2];
+    anim = function (ahora) { var p = Math.min(1, (ahora - t0) / 1900), e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; for (var k3 in fin) orb[k3] = ini[k3] + (fin[k3] - ini[k3]) * e; if (p >= 1) anim = null; sucio = true; };
+  }

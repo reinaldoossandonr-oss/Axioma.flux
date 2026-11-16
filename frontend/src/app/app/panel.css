@@ -572,3 +572,8 @@ body:not(.claro) .bf-datos b{color:#F1F5F9}
 #b-ruta .btn.activo{border-color:var(--azul);color:var(--azul);background:rgba(14,165,240,.12)}
 #b-ruta .rt-sig.activo{background:var(--azul);color:#fff}
 @media(prefers-reduced-motion:reduce){#b-ficha{transition:none}}
+
+/* Acabado premium: viñeta cinematográfica sobre la escena 3D */
+#lienzo::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;border-radius:inherit;
+  background:radial-gradient(ellipse 85% 75% at 50% 45%,transparent 58%,rgba(15,27,45,.16) 100%)}
+body:not(.claro) #lienzo::after{background:radial-gradient(ellipse 85% 75% at 50% 45%,transparent 50%,rgba(0,0,0,.42) 100%)}

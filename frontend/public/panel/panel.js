@@ -893,7 +893,7 @@ function enlazar() {
     if (e.target.id !== 'btn-nuevo') $('menu-nuevo').classList.remove('abierto');
     if (!b) return;
     if (b.hasAttribute('data-vista')) { mostrar(b.getAttribute('data-vista')); return; }
-    if (b.hasAttribute('data-color')) { ESTADO.color = b.getAttribute('data-color'); guardarLocal('color', ESTADO.color); pintar(); BODEGA.colorear(); return; }
+    if (b.hasAttribute('data-color')) { ESTADO.color = b.getAttribute('data-color'); guardarLocal('color3d', ESTADO.color); pintar(); BODEGA.colorear(); return; }
     if (b.hasAttribute('data-pasillo')) { ESTADO.pasillo = b.getAttribute('data-pasillo'); marcarSegmento('b-pasillos', 'data-pasillo', ESTADO.pasillo); BODEGA.enfocar(); return; }
     if (b.hasAttribute('data-calidad')) { ESTADO.calidad = b.getAttribute('data-calidad'); guardarLocal('calidad', ESTADO.calidad); marcarSegmento('b-calidad', 'data-calidad', ESTADO.calidad); BODEGA.calidad(); return; }
     var a = ACCIONES[b.getAttribute('data-accion')];
@@ -1529,7 +1529,7 @@ var BODEGA = (function () {
     sol.position.set(centro.x + 9, techo + 9, centro.z + 12); sol.target.position.set(centro.x, 0, centro.z);
     var s = Math.max(largo, fondo) * 0.62, sc = sol.shadow.camera; sc.left = -s; sc.right = s; sc.top = s; sc.bottom = -s; sc.near = 1; sc.far = 80; sc.updateProjectionMatrix();
 
-    senaletica(W, Dp);
+    senaletica(W, Dp); sombrasContacto(U, W, Dp);
     construirRacks(U, W, H, Dp);
 
     // Posiciones: palé, carga, banda de color, etiqueta y volumen para el clic (todo instanciado)
@@ -1544,6 +1544,7 @@ var BODEGA = (function () {
     marco.renderOrder = 5; marco.visible = false; grupo.add(marco);
 
     carretilla(minX - W / 2 - 3.4, maxZ + 4.4, 0.6);
+    crearHaces();
     // Palés vacíos apilados junto a la pared
     for (var k = 0; k < 6; k++) malla(caj(1.2, 0.14, 1.0), M.madera, maxX + W / 2 + 3.4, 0.07 + k * 0.15, minZ - 3.4, grupo).rotation.y = (k % 2) * 0.06;
     actualizar();
@@ -1574,7 +1575,7 @@ var BODEGA = (function () {
         for (var k = 0; k < 3; k++) poner(t.tacos, i * 3 + k, u.x, y + 0.07, u.y + (k - 1) * 0.44);
         // Toda posición ocupada muestra al menos una caja, aunque el stock esté en cero
         var lleno = 0.3 + 0.7 * Math.sqrt(Math.min(1, Math.max(0, x.stock) / (maximo * 0.6))), h = (dim.h - 0.42) * lleno;
-        poner(cargas, i, u.x, y + 0.14 + h / 2, u.y, 1, h, 1); poner(bandas, i, u.x, y + 0.14 + h * 0.62, u.y);
+        ponerCarga(o, i, u.x, y + 0.14 + h / 2, u.y, h); poner(bandas, i, u.x, y + 0.14 + h * 0.62, u.y, 0.96, 1, 0.96);
         cargas.setColorAt(i, col.setRGB(1, 1, 1));
       } else {
         t.tablas.setMatrixAt(i * 2, cero); t.tablas.setMatrixAt(i * 2 + 1, cero);
@@ -1596,9 +1597,9 @@ var BODEGA = (function () {
     if (!listo || !bandas) return;
     var col = new T.Color();
     D.ubicaciones.forEach(function (u, i) {
-      var x = C.ubi[u.id]; col.set(colorUbi(x));
+      var x = C.ubi[u.id], real = ESTADO.color === 'real'; col.set(real ? (x.it ? COLOR[x.it.rot] : COLOR.Libre) : colorUbi(x));
       etiquetas.setColorAt(i, col);
-      var tono = x.it ? tonoCaja(colorUbi(x), i) : new T.Color(1, 1, 1);
+      var tono = x.it ? (real ? new T.Color(tonoReal(x, i)) : tonoCaja(colorUbi(x), i)) : new T.Color(1, 1, 1);
       cargas.setColorAt(i, tono); bandas.setColorAt(i, tono.clone().multiplyScalar(0.55));
     });
     etiquetas.instanceColor.needsUpdate = true; bandas.instanceColor.needsUpdate = true; cargas.instanceColor.needsUpdate = true;
@@ -1645,7 +1646,7 @@ var BODEGA = (function () {
   function tema() {
     if (!escena) return;
     var c = (getComputedStyle(document.body).getPropertyValue('--escena') || '').trim() || '#070c17';
-    escena.background.set(c); escena.fog.color.set(c); sucio = true;
+    escena.background.set(c); escena.fog.color.set(c); if (hacesLuz) hacesLuz.visible = !document.body.classList.contains('claro'); sucio = true;
   }
 
   function ajustar() {
@@ -1662,6 +1663,7 @@ var BODEGA = (function () {
       el.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY };
       resaltarHover(null); if (window.fichaHover) fichaHover(null);
       if (ESTADO.seguir) { ESTADO.seguir = false; if (window.pintarControlRutas) pintarControlRutas(); }
+      iner.on = false; iner.th = iner.ph = 0;
       ini = { x: e.clientX, y: e.clientY, boton: e.button, mayus: e.shiftKey }; movido = 0; pellizco = 0; anim = null; $('b-ayuda').style.display = 'none';
     });
     el.addEventListener('pointermove', function (e) {
@@ -1676,12 +1678,13 @@ var BODEGA = (function () {
         var k = orb.radio * 0.0016, c = Math.cos(orb.theta), s = Math.sin(orb.theta);
         orb.tx -= (dx * c + dy * s * 0.6) * k; orb.tz -= (-dx * s + dy * c * 0.6) * k;
       } else {
-        orb.theta -= dx * 0.006; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi - dy * 0.005));
+        orb.theta -= dx * 0.006; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi - dy * 0.005)); iner.th = -dx * 0.006; iner.ph = -dy * 0.005;
       }
       sucio = true;
     });
     var soltar = function (e) {
       var era = punteros[e.pointerId]; delete punteros[e.pointerId];
+      if (era && movido >= 6 && !Object.keys(punteros).length && !(ini && (ini.boton === 2 || ini.mayus))) iner.on = true;
       if (era && movido < 6 && ini && ini.boton === 0 && e.type === 'pointerup') { var id = buscar(e); seleccionarPosicion(id === ESTADO.sel ? null : id); }
     };
     el.addEventListener('pointerup', soltar); el.addEventListener('pointercancel', soltar);
@@ -1703,6 +1706,7 @@ var BODEGA = (function () {
     requestAnimationFrame(ciclo);
     if (anim) anim(ahora);
     if (rutaAnim) rutaAnim(ahora);
+    inercia();
     if (!sucio || ESTADO.vista !== 'posiciones') return;
     sucio = false;
     var sp = Math.sin(orb.phi), x = orb.tx + orb.radio * sp * Math.sin(orb.theta), y = orb.ty + orb.radio * Math.cos(orb.phi), z = orb.tz + orb.radio * sp * Math.cos(orb.theta);
@@ -2169,6 +2173,79 @@ var BODEGA = (function () {
       g.fillStyle = gr; g.fillRect(0, 0, w, w);
     });
   }
+
+  /* ===================== ACABADO PREMIUM 16/11/2026 =====================
+     · Vista «Real»: cajas de cartón kraft y blancas, con el estado en la etiqueta de la viga.
+     · Palés con pequeñas variaciones (tamaño y giro) para un aspecto natural.
+     · Sombras de contacto bajo racks y palés de suelo.
+     · Haces de luz bajo las luminarias en el tema oscuro.
+     · Inercia al girar la cámara y vuelo de entrada al abrir la bodega.                 */
+  var KRAFT = ['#C99A63', '#BD8B55', '#D3A873', '#B07E4B', '#E6E1D6', '#C49460', '#EFEBE2'];
+  function tonoReal(x, i) { var h = (i * 2654435761) >>> 0; return KRAFT[h % KRAFT.length]; }
+  function ruido01(i, k) { var s = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return s - Math.floor(s); }
+  /** Coloca la carga de un palé con un ligero desorden (no hay dos palés idénticos). */
+  function ponerCarga(o, i, px, py, pz, h) {
+    o.position.set(px + (ruido01(i, 1) - 0.5) * 0.05, py, pz + (ruido01(i, 2) - 0.5) * 0.05);
+    o.scale.set(0.93 + ruido01(i, 3) * 0.07, h, 0.92 + ruido01(i, 4) * 0.08);
+    o.rotation.set(0, (ruido01(i, 5) - 0.5) * 0.07, 0); o.updateMatrix(); cargas.setMatrixAt(i, o.matrix);
+  }
+  function texSombra() {
+    return decal('sombra', 128, 128, function (g, w, h) {
+      var gr = g.createRadialGradient(w / 2, h / 2, w * 0.18, w / 2, h / 2, w * 0.5);
+      gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.6, 'rgba(0,0,0,.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    });
+  }
+  /** Sombras suaves de contacto bajo cada tramo de rack (dan peso y profundidad a la escena). */
+  function sombrasContacto(U, W, Dp) {
+    var filas = {}; U.forEach(function (u) { (filas[u.y] = filas[u.y] || []).push(Number(u.x)); });
+    var m = new T.MeshBasicMaterial({ map: texSombra(), color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    Object.keys(filas).forEach(function (zy) {
+      var xs = unicos(filas[zy].map(String)).map(Number).sort(function (a, b) { return a - b; }), ini = xs[0];
+      var tramo = function (a, b) { var g = new T.PlaneGeometry(b - a + W + 1.1, Dp + 1.3); g.rotateX(-Math.PI / 2); var me = new T.Mesh(g, m); me.position.set((a + b) / 2, 0.012, Number(zy)); me.renderOrder = 0; grupo.add(me); };
+      for (var i = 1; i < xs.length; i++) if (xs[i] - xs[i - 1] > W * 1.5) { tramo(ini, xs[i - 1]); ini = xs[i]; }
+      tramo(ini, xs[xs.length - 1]);
+    });
+  }
+  /** Haces de luz bajo las luminarias (solo en el tema oscuro, donde se aprecian). */
+  var hacesLuz = null;
+  function texCono() {
+    return texCompartida('cono', 64, 256, function (g, w, h) {
+      var gy = g.createLinearGradient(0, 0, 0, h); gy.addColorStop(0, 'rgba(255,255,255,.9)'); gy.addColorStop(0.5, 'rgba(255,255,255,.3)'); gy.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gy; g.fillRect(0, 0, w, h);
+    });
+  }
+  function crearHaces() {
+    hacesLuz = new T.Group(); grupo.add(hacesLuz);
+    var mat = new T.MeshBasicMaterial({ map: texCono(), color: 0xfff1d6, transparent: true, opacity: 0.075, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false });
+    var pos = new T.Vector3(), caja3 = new T.Box3();
+    grupo.updateMatrixWorld(true);
+    grupo.traverse(function (o) {
+      if (!o.isMesh || o.material !== M.lampara || !o.geometry) return;
+      caja3.setFromObject(o); var tam = caja3.getSize(new T.Vector3()); caja3.getCenter(pos);
+      var largo = Math.max(tam.x, tam.z), alto = Math.max(3, pos.y - 0.2), n = Math.max(1, Math.round(largo / 7)), enX = tam.x >= tam.z;
+      for (var k = 0; k < n; k++) {
+        var f = n === 1 ? 0 : (k / (n - 1) - 0.5) * (largo - 4), cono = new T.Mesh(new T.CylinderGeometry(0.35, 3.4, alto, 24, 1, true), mat);
+        cono.position.set(pos.x + (enX ? f : 0), alto / 2, pos.z + (enX ? 0 : f)); cono.renderOrder = 10; cono.raycast = function () {}; hacesLuz.add(cono);
+      }
+    });
+    hacesLuz.visible = !document.body.classList.contains('claro');
+  }
+  /** Inercia: la cámara sigue girando un instante al soltar el ratón. */
+  var iner = { th: 0, ph: 0, on: false };
+  function inercia() {
+    if (!iner.on) return;
+    orb.theta += iner.th; orb.phi = Math.max(0.2, Math.min(1.52, orb.phi + iner.ph));
+    iner.th *= 0.9; iner.ph *= 0.9; if (Math.abs(iner.th) + Math.abs(iner.ph) < 2e-4) iner.on = false;
+    sucio = true;
+  }
+  /** Vuelo de entrada: la cámara llega desde lo alto hasta la vista general. */
+  function vueloInicial() {
+    var fin = {}; for (var k in orb) fin[k] = orb[k];
+    var ini = { tx: fin.tx, ty: fin.ty, tz: fin.tz, radio: fin.radio * 1.9, theta: fin.theta - 1.1, phi: 0.38 }, t0 = performance.now();
+    for (var k2 in ini) orb[k2] = ini[k2];
+    anim = function (ahora) { var p = Math.min(1, (ahora - t0) / 1900), e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; for (var k3 in fin) orb[k3] = ini[k3] + (fin[k3] - ini[k3]) * e; if (p >= 1) anim = null; sucio = true; };
+  }
   function verRuta() {
     var L = ESTADO.rutas || []; if (!L.length) return;
     // Encuadra la zona que recorren las rutas (en naves grandes no hace falta ver toda la bodega)
@@ -2189,7 +2266,7 @@ var BODEGA = (function () {
     mostrar: function () {
       if (!listo && !fallo) { if (iniciar()) requestAnimationFrame(ciclo); }
       if (fallo) { if (!$('b-fallo')) $('lienzo').insertAdjacentHTML('beforeend', '<div class="vacio" id="b-fallo" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">' + fallo + '<button class="btn" data-vista="ubicaciones">Ver el mapa de ubicaciones</button></div>'); return; }
-      if (pendiente) { construir(); pendiente = false; if (!construida) { calidad(); ajustar(); enfocar(false); construida = true; } }
+      if (pendiente) { construir(); pendiente = false; if (!construida) { calidad(); ajustar(); enfocar(false); vueloInicial(); construida = true; } }
       ajustar(); seleccionar();
     },
     datosNuevos: function () { pendiente = true; if (listo && ESTADO.vista === 'posiciones') { construir(); pendiente = false; } },
@@ -4694,11 +4771,20 @@ function fichaHover(id, ev) {
   f.classList.add('ver');
 }
 
+/* ---------- Vista «Real»: cartón natural; el estado va en la etiqueta de la viga ---------- */
+var leyendaColorMej = leyendaColor;
+leyendaColor = function () {
+  if (ESTADO.color !== 'real') return leyendaColorMej();
+  var oc = 0, li = 0; D.ubicaciones.forEach(function (u) { var x = C.ubi[u.id]; if (!pasaFiltro(x)) return; if (x.it) oc++; else li++; });
+  return '<span><i style="background:#C99A63"></i>Vista real · ' + num(oc) + ' palés</span><span><i style="background:' + COLOR.Alta + '"></i>Etiqueta: rotación</span>' +
+    (li ? '<span><i style="background:' + COLOR.Libre + '"></i>Hueco libre · ' + num(li) + '</span>' : '');
+};
+
 /* ===================== ARRANQUE ===================== */
 (function () {
-  ESTADO.color = leerLocal('color') || 'rotacion';
+  ESTADO.color = leerLocal('color3d') || 'real';
   ESTADO.calidad = leerLocal('calidad') || (window.innerWidth < 760 ? 'media' : 'alta');
-  if (!COLOR[ESTADO.color] && ['rotacion', 'disponibilidad', 'categoria', 'quiebre'].indexOf(ESTADO.color) === -1) ESTADO.color = 'rotacion';
+  if (!COLOR[ESTADO.color] && ['real', 'rotacion', 'disponibilidad', 'categoria', 'quiebre'].indexOf(ESTADO.color) === -1) ESTADO.color = 'real';
   crearFormularios();
   enlazar(); enlazarSaas(); enlazarIntegraciones(); enlazarPedidos(); enlazarAsistente();
   var pintarBase = pintarTodo;
